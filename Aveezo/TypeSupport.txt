@@ -1,0 +1,41 @@
+﻿ # Type support, sort these out for clarity
+# Path, Last Checked, Note
+
+Data/Sql/Results/SqlCell.cs, 4/7/2021, completed
+Util/Xml/Xml.cs, 4/7/2021
+Web/Api/Tests/TestApi.cs, 4/7/2021
+
+*: numeric
+
+bool
+*sbyte
+*byte
+*short
+*ushort
+*int
+*uint
+*long
+*ulong
+char
+*float
+*double
+*decimal 
+DateTime
+DateTimeOffset
+TimeSpan
+string
+Guid
+BitArray 
+PhysicalAddress
+IPAddressCidr
+IPAddress
+
+object[] Array
+byte[] ByteArray
+int[] IntArray
+string[] StringArray
+
+object
+
+
+ 

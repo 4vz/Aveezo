@@ -1,13 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>aveezo</AssemblyName>
+    <RootNamespace>Aveezo</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
-
+  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;FEATURE_ENCODING_ASCII;FEATURE_DIAGNOSTICS_TRACESOURCE;FEATURE_DIRECTORYINFO_ENUMERATEFILES;FEATURE_MEMORYSTREAM_GETBUFFER;FEATURE_MEMORYSTREAM_TRYGETBUFFER;FEATURE_RNG_CREATE;FEATURE_SOCKET_TAP;FEATURE_SOCKET_APM;FEATURE_SOCKET_EAP;FEATURE_SOCKET_SYNC;FEATURE_SOCKET_SETSOCKETOPTION;FEATURE_SOCKET_SELECT;FEATURE_SOCKET_POLL;FEATURE_SOCKET_DISPOSE;FEATURE_DNS_SYNC;FEATURE_DNS_APM;FEATURE_DNS_TAP;FEATURE_STREAM_APM;FEATURE_STREAM_TAP;FEATURE_THREAD_COUNTDOWNEVENT;FEATURE_THREAD_TAP;FEATURE_THREAD_THREADPOOL;FEATURE_THREAD_SLEEP;FEATURE_WAITHANDLE_DISPOSE;FEATURE_HASH_MD5;FEATURE_HASH_SHA1_CREATE;FEATURE_HASH_SHA256_CREATE;FEATURE_HASH_SHA384_CREATE;FEATURE_HASH_SHA512_CREATE;FEATURE_HMAC_MD5;FEATURE_HMAC_SHA1;FEATURE_HMAC_SHA256;FEATURE_HMAC_SHA384;FEATURE_HMAC_SHA512;FEATURE_CRYPTO_HASHALGORITHM</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -19,7 +23,29 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Aveezo.Standard\Aveezo.Standard.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AngleSharp" Version="0.16.1" />
+    <PackageReference Include="AngleSharp.Xml" Version="0.16.0" />
+    <PackageReference Include="IPNetwork2" Version="2.5.353" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="3.0.1" />
+    <PackageReference Include="Npgsql" Version="5.0.10" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="3.21.3" />
+    <PackageReference Include="SSH.NET" Version="2020.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.2.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Filters" Version="7.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Data\NoSql\" />
+    <Folder Include="Extensions\System.Net\" />
+  </ItemGroup>
+
+
 
 </Project>

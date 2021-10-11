@@ -4,16 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.29123.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aveezo", "Aveezo\Aveezo.csproj", "{CC3093DA-4BC7-440B-A228-48594165DD77}"
-	ProjectSection(ProjectDependencies) = postProject
-		{F2CB45B6-6EB9-473F-9B25-BFF75235B633} = {F2CB45B6-6EB9-473F-9B25-BFF75235B633}
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aveezo.Test", "Aveezo.Test\Aveezo.Test.csproj", "{87B5F73F-8519-45A1-8989-800D6FADFB6C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{CC3093DA-4BC7-440B-A228-48594165DD77} = {CC3093DA-4BC7-440B-A228-48594165DD77}
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aveezo.Standard", "Aveezo.Standard\Aveezo.Standard.csproj", "{F2CB45B6-6EB9-473F-9B25-BFF75235B633}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +24,6 @@ Global
 		{87B5F73F-8519-45A1-8989-800D6FADFB6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87B5F73F-8519-45A1-8989-800D6FADFB6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87B5F73F-8519-45A1-8989-800D6FADFB6C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F2CB45B6-6EB9-473F-9B25-BFF75235B633}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F2CB45B6-6EB9-473F-9B25-BFF75235B633}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F2CB45B6-6EB9-473F-9B25-BFF75235B633}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F2CB45B6-6EB9-473F-9B25-BFF75235B633}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
