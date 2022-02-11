@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -26,13 +26,6 @@ namespace Aveezo
         }
     }
 
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false, Inherited = true)]
-    public class ArgumentAttribute : FromRouteAttribute
-    {
-        public ArgumentAttribute(string name)
-        {
-            Name = name;
-        }
-    }
 
 }
+

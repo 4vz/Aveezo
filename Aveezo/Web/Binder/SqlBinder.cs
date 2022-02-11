@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,18 +39,14 @@ namespace Aveezo
 
             if (action.MethodInfo.Has<SqlAttribute>(out var obj))
             {
-                var name = obj.Name;
+                var name = obj[0].Name;
 
                 var sql = provider.GetService<IDatabaseService>().Sql(name);
 
                 if (sql)
                     bindingContext.Result = ModelBindingResult.Success(sql);
                 else
-                {
-                    bindingContext.ModelState.AddModelError("SqlBinder", "###Failed");
-                    bindingContext.Result = ModelBindingResult.Failed();
-                }
-                   
+                    bindingContext.ModelState.AddModelError("unavailable", $"Sql: {sql.LastException?.Exception?.Message}");
             }
 
             return Task.CompletedTask;

@@ -4,7 +4,7 @@ using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -92,7 +92,7 @@ namespace Aveezo
 
         public void Apply(OpenApiSchema schema, SchemaFilterContext context)
         {
-            if (context.Type != null && context.Type.IsGenericType && context.Type.GetGenericTypeDefinition() == typeof(Result<>))
+            if (context.Type != null && context.Type.IsGenericType && context.Type.GetGenericTypeDefinition() == typeof(Method<>))
             {
                 //schema.Reference = context.SchemaGenerator.GenerateSchema(context.Type, context.SchemaRepository).Reference;
 

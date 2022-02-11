@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,17 +10,30 @@ namespace Aveezo
     {
         #region Fields
 
-        public string Schema { get; }
+        public bool IsStatement { get; private set; }
 
-        public string Name { get; internal set; }
+        public string Schema { get; } = null;
 
-        public string Alias { get; }
+        /// <summary>
+        /// If IsStatement is false, gets the name of the table. Otherwise gets the inner statement.
+        /// </summary>
+        public string Name { get; private set; }
 
-        public bool IsStatement { get; }
+        public string Ident => $"{Schema.Format(schema => $"{schema}.")}{Name}";
 
         public float TableSample { get; set; } = 0;
 
-        public SqlColumn this[string name] => new(this, name);
+        public string Alias { get; set; }
+
+        public SqlColumn this[string name]
+        {
+            get => new(this, name);
+        }
+
+        public SqlColumn this[string name, string alias]
+        {
+            get => new(this, name, alias);
+        }
 
         #endregion
 
@@ -39,6 +52,7 @@ namespace Aveezo
         {
             TableSample = sample;
 
+            // Split name to schema name
             if (name != null && name.Length > 0)
             {
                 var dot = name.IndexOf('.');
@@ -69,19 +83,21 @@ namespace Aveezo
 
         #region Methods
 
-        public SqlColumn All()
+        /// <summary>
+        /// Gets new table based on this table with specified statement;
+        /// </summary>
+        public SqlTable GetStatement(string statement)
         {
-            return new SqlColumn(this);
+            var table = new SqlTable(); // create new statement table
+
+            // set statement
+            table.Name = statement;
+
+            // get alias from original table
+            table.Alias = Alias;
+
+            return table;
         }
-
-        public string GetDefinition() => $"{(IsStatement ? "(" : "")}{(Schema != null ? $"{Schema}." : "" )}{Name}{(IsStatement ? ")" : "")}";
-
-        public override string ToString() => $"{Alias}";
-
-        #endregion
-
-        #region Statics
-
 
         #endregion
     }

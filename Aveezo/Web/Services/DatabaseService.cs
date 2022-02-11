@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -45,10 +45,9 @@ namespace Aveezo
                     return sqls[name];
                 else
                 {
-                    var dx = Aveezo.Sql.Load(Options.Config, name);
-
                     lock (sqls)
                     {
+                        var dx = Aveezo.Sql.Load(Options.Config, name);
                         if (dx != null)
                         {
                             sqls.Add(name, dx);
@@ -63,4 +62,4 @@ namespace Aveezo
 
         #endregion
     }
-    }
+}

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -72,7 +72,7 @@ namespace Aveezo
         public static implicit operator byte?(SqlCell d) => d.GetNullableByte();
         public static implicit operator byte(SqlCell d) => d.GetByte();
 
-        public short? GetNullableShort() => GetNullableNumericType<sbyte>();
+        public short? GetNullableShort() => GetNullableNumericType<short>();
         public short GetShort() => GetNullableShort() ?? default;
         public static implicit operator short?(SqlCell d) => d.GetNullableShort();
         public static implicit operator short(SqlCell d) => d.GetShort();
@@ -248,7 +248,7 @@ namespace Aveezo
             if (IsNull)
                 return null;
             else if (isArray)
-                return ((Array)value).Cast(cast);
+                return ((Array)value).Invoke(cast);
             else
                 return null;
         }

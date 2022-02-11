@@ -7,25 +7,25 @@ namespace Aveezo
 {
     public static class TupleExtensions
     {
-        public static ITuple[] Cast<T1, T2>(this List<(T1, T2)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3>(this List<(T1, T2, T3)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4>(this List<(T1, T2, T3, T4)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4, T5>(this List<(T1, T2, T3, T4, T5)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6>(this List<(T1, T2, T3, T4, T5, T6)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7>(this List<(T1, T2, T3, T4, T5, T6, T7)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7, T8>(this List<(T1, T2, T3, T4, T5, T6, T7, T8)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this List<(T1, T2, T3, T4, T5, T6, T7, T8, T9)> valueTupleList) => valueTupleList.ToArray().Cast();
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this List<(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> valueTupleList) => valueTupleList.ToArray().Cast();
+        public static ITuple[] ToITuple<T1, T2>(this List<(T1, T2)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3>(this List<(T1, T2, T3)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4>(this List<(T1, T2, T3, T4)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5>(this List<(T1, T2, T3, T4, T5)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6>(this List<(T1, T2, T3, T4, T5, T6)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7>(this List<(T1, T2, T3, T4, T5, T6, T7)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8>(this List<(T1, T2, T3, T4, T5, T6, T7, T8)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this List<(T1, T2, T3, T4, T5, T6, T7, T8, T9)> valueTupleList) => valueTupleList.ToArray().ToITuple();
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this List<(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> valueTupleList) => valueTupleList.ToArray().ToITuple();
 
-        public static ITuple[] Cast<T1, T2>(this (T1, T2)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3>(this (T1, T2, T3)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4>(this (T1, T2, T3, T4)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4, T5>(this (T1, T2, T3, T4, T5)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6>(this (T1, T2, T3, T4, T5, T6)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7>(this (T1, T2, T3, T4, T5, T6, T7)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7, T8>(this (T1, T2, T3, T4, T5, T6, T7, T8)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
-        public static ITuple[] Cast<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)[] valueTupleArray) => valueTupleArray.Cast(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2>(this (T1, T2)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3>(this (T1, T2, T3)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4>(this (T1, T2, T3, T4)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5>(this (T1, T2, T3, T4, T5)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6>(this (T1, T2, T3, T4, T5, T6)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7>(this (T1, T2, T3, T4, T5, T6, T7)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8>(this (T1, T2, T3, T4, T5, T6, T7, T8)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
 
         public static T[] ToArray<T>(this ITuple item)
         {

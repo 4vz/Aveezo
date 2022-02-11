@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Aveezo
 {
-    public sealed class SqlUpdate : SqlManipulationBase
+    public sealed class SqlUpdate : SqlExecuteBase
     {
         #region Fields
 
@@ -15,7 +15,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdate(Sql database) : base(null, database, SqlQueryType.Execute)
+        internal SqlUpdate(Sql database) : base(database, null, SqlQueryType.Execute)
         {
             entries = new List<SqlUpdateEntry>();
         }
@@ -36,7 +36,7 @@ namespace Aveezo
                 throw new ArgumentNullException();
         }
 
-        protected override string[] GetStatements() => Database.Connection.Update(entries.Keep(delegate (SqlUpdateEntry entry) { return entry.Update.Sets.Count != 0; }).ToArray(), OutputResult);
+        protected override string[] GetStatements(Values<string> _) => Database.Connection.Update(entries.Keep(delegate (SqlUpdateEntry entry) { return entry.Update.Sets.Count != 0; }).ToArray(), OutputResult);
 
         #endregion
     }
@@ -52,7 +52,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdateEntry(Sql database, string table) : base(database, table)
+        internal SqlUpdateEntry(Sql database, SqlTable table) : base(database, table)
         {
         }
 
@@ -106,7 +106,7 @@ namespace Aveezo
 
         public SqlUpdateEntry Where(SqlColumn leftColumn, SqlColumn rightColumn) => Where(leftColumn == rightColumn);
 
-        protected override string[] GetStatements() => Database.Connection.Update(this.Array(), OutputResult);
+        protected override string[] GetStatements(Values<string> _) => Database.Connection.Update(this.Array(), OutputResult);
 
         #endregion
     }

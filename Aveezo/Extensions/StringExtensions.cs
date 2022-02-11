@@ -2,7 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -14,7 +14,8 @@ namespace Aveezo
         CamelCase,
         UpperSnakeCase,
         LowerSnakeCase,
-        KebabCase,
+        UpperKebabCase,
+        LowerKebabCase,
         PascalCase
     }
 
@@ -59,6 +60,10 @@ namespace Aveezo
                     words.Add(wordBuilder.ToString());
                     wordBuilder.Clear();
                 }
+                else if (c == '_')
+                {
+                    words.Add("");
+                }
             }
 
             if (wordBuilder.Length > 0)
@@ -83,18 +88,25 @@ namespace Aveezo
                     final.Append(wb);
                 }
             }
-            else if (caseStyle == CaseStyle.UpperSnakeCase || caseStyle == CaseStyle.LowerSnakeCase || caseStyle == CaseStyle.KebabCase)
+            else if (caseStyle == CaseStyle.UpperSnakeCase || caseStyle == CaseStyle.LowerSnakeCase || caseStyle == CaseStyle.LowerKebabCase || caseStyle == CaseStyle.UpperKebabCase)
             {
+                int iword = 0;
                 foreach (var word in words)
                 {
-                    if (final.Length > 0)
+                    if (iword > 0)
                     {
-                        if (caseStyle == CaseStyle.UpperSnakeCase)
+                        if (caseStyle == CaseStyle.UpperSnakeCase || caseStyle == CaseStyle.LowerSnakeCase)
                             final.Append('_');
                         else
                             final.Append('-');
                     }
-                    final.Append(word.ToLower());
+
+                    if (caseStyle == CaseStyle.UpperSnakeCase || caseStyle == CaseStyle.UpperKebabCase)
+                        final.Append(word.ToUpper());
+                    if (caseStyle == CaseStyle.LowerSnakeCase || caseStyle == CaseStyle.LowerKebabCase)
+                        final.Append(word.ToLower());
+
+                    iword++;
                 }
             }
 
@@ -103,27 +115,40 @@ namespace Aveezo
 
         public static string ToPascalCase(this string value) => value.ToCase(CaseStyle.PascalCase);
 
-        public static string ToSnakeCase(this string value) => value.ToCase(CaseStyle.UpperSnakeCase);
+        public static string ToSnakeCase(this string value) => value.ToCase(CaseStyle.LowerSnakeCase);
 
         public static string ToCamelCase(this string value) => value.ToCase(CaseStyle.CamelCase);
 
-        public static string ToKebabCase(this string value) => value.ToCase(CaseStyle.KebabCase);
+        public static string ToKebabCase(this string value) => value.ToCase(CaseStyle.LowerKebabCase);
 
-        public static string Convert(this string value, StringOptions options)
+        /// <summary>
+        /// Returns a new string in which all case styles of all occurrences of a specified string in the current instance are replaced with another specified string.
+        /// </summary>
+        public static string ReplaceAllCase(this string value, string oldValue, string? newValue)
         {
-            if (options.HasFlag(StringOptions.TrimStart))
+            foreach (var style in (CaseStyle[])Enum.GetValues(typeof(CaseStyle)))
+            {
+                var oldValueStyle = oldValue.ToCase(style);
+                value = value.Replace(oldValueStyle, newValue);
+            }
+            return value;
+        }
+
+        public static string Convert(this string value, StringConvertOptions options)
+        {
+            if (options.HasFlag(StringConvertOptions.TrimStart))
                 value = value.TrimStart();
-            if (options.HasFlag(StringOptions.TrimEnd))
+            if (options.HasFlag(StringConvertOptions.TrimEnd))
                 value = value.TrimEnd();
-            if (options.HasFlag(StringOptions.ToLower) && !options.HasFlag(StringOptions.ToUpper))
+            if (options.HasFlag(StringConvertOptions.ToLower) && !options.HasFlag(StringConvertOptions.ToUpper))
                 value = value.ToLower();
-            if (options.HasFlag(StringOptions.ToUpper) && !options.HasFlag(StringOptions.ToLower))
+            if (options.HasFlag(StringConvertOptions.ToUpper) && !options.HasFlag(StringConvertOptions.ToLower))
                 value = value.ToUpper();
 
             return value;
         }
 
-        public static string[] Tokenize(this string value, int count, StringOptions operations, params int[] indexes)
+        public static string[] Tokenize(this string value, int count, StringConvertOptions operations, params int[] indexes)
         {   
             var results = new List<string>();
 
@@ -171,11 +196,11 @@ namespace Aveezo
             return results.ToArray();
         }
 
-        public static string[] Tokenize(this string value, StringOptions options, params int[] indexes) => value.Tokenize(0, options, indexes);
+        public static string[] Tokenize(this string value, StringConvertOptions options, params int[] indexes) => value.Tokenize(0, options, indexes);
 
-        public static string[] Tokenize(this string value, params int[] indexes) => value.Tokenize(StringOptions.None, indexes);
+        public static string[] Tokenize(this string value, params int[] indexes) => value.Tokenize(StringConvertOptions.None, indexes);
 
-        public static string[] Tokenize(this string value, int count, StringOptions options)
+        public static string[] Tokenize(this string value, int count, StringConvertOptions options)
         {
             if (value == null) throw new NullReferenceException();
 
@@ -201,9 +226,9 @@ namespace Aveezo
             return results.ToArray();
         }
 
-        public static string[] Tokenize(this string value, StringOptions options) => value.Tokenize(0, options);
+        public static string[] Tokenize(this string value, StringConvertOptions options) => value.Tokenize(0, options);
 
-        public static string[] Tokenize(this string value) => value.Tokenize(StringOptions.None);
+        public static string[] Tokenize(this string value) => value.Tokenize(StringConvertOptions.None);
 
         public static string[] Trim(this string[] values)
         {
@@ -273,28 +298,24 @@ namespace Aveezo
 
         public static string Join(this List<string> values, string separator, int startIndex, int count) => values?.ToArray().Join(separator, startIndex, count);
 
-
-        public static string Append(this string value, char by, int count)
+        public static string Append(this string value, char by, int repeat)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
-            if (count < 0) 
-                throw new ArgumentOutOfRangeException(nameof(count));
-            else if (count == 0)
+            if (repeat < 0) 
+                throw new ArgumentOutOfRangeException(nameof(repeat));
+            else if (repeat == 0)
                 return value;
             else
             {
                 var sb = new StringBuilder(value);
 
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < repeat; i++)
                     sb.Append(by);
 
                 return sb.ToString();
             }
         }
-
-
-        public static string NullIf(this string value, string when) => value == when ? null : value;
 
         public static bool SurroundedBy(this string value, string start, string end, out string remaining) => value.SurroundedBy(start, end, value, out remaining);
 
@@ -454,16 +475,34 @@ namespace Aveezo
 
             return no;
         }
+
+        public static void Find(this string value, string regex, Action<string> action) => value.Find(new Regex(regex), action);
+
+        public static void Find(this string value, Regex regex, Action<string> action)
+        {
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            if (regex == null) throw new ArgumentNullException(nameof(regex));
+            if (action == null) throw new ArgumentNullException(nameof(action));
+
+            foreach (Match match in regex.Matches(value))
+            {
+                var gc = match.Groups;
+
+                var gcc = gc[0];
+
+                action(gcc.Value);
+            }
+        }
      
     }
 
     [Flags]
-    public enum StringOptions
+    public enum StringConvertOptions
     {
         None = 0,
         TrimStart = 1,
         TrimEnd = 2,
-        Trim = 3,
+        Trim = TrimStart | TrimEnd,
         ToLower = 4,
         ToUpper = 8
     }

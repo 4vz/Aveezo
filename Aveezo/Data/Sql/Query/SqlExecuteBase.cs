@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Aveezo
 {
-    public abstract class SqlManipulationBase : SqlQueryBase
+    public abstract class SqlExecuteBase : SqlQueryBase
     {
         #region Fieldsx
 
@@ -14,7 +14,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlManipulationBase(string table, Sql database, SqlQueryType type) : base(table, database, type)
+        internal SqlExecuteBase(Sql database, SqlTable table, SqlQueryType type) : base(database, table, type)
         {
         }
 
@@ -22,7 +22,7 @@ namespace Aveezo
 
         #region Methods
 
-        public SqlManipulationBase Output()
+        public SqlExecuteBase Output()
         {
             OutputResult = true;
             return this;

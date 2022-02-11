@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -16,8 +16,8 @@ namespace Aveezo
         (string, string)[] Values { get; set; }
     }
 
-    [ModelBinder(typeof(FilterParamBinder))]
-    public class Filter<T> : IFilter
+    [ModelBinder(typeof(PropFilterBinder))]
+    public class PropFilter<T> : IFilter
     {
         #region Fields
 
@@ -29,21 +29,9 @@ namespace Aveezo
 
         #region Constructors
 
-        public Filter()
+        public PropFilter()
         {
         }
-
-        #endregion
-         
-        #region Operators
-
-        #endregion
-
-        #region Methods
-
-        #endregion
-
-        #region Statics
 
         #endregion
     }

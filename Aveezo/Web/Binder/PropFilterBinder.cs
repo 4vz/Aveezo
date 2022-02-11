@@ -1,13 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Aveezo
 {
-    public class FilterParamBinder : IModelBinder
+    public class PropFilterBinder : IModelBinder
     {
         #region Fields
 
@@ -15,7 +15,7 @@ namespace Aveezo
 
         #region Constructors
 
-        public FilterParamBinder()
+        public PropFilterBinder()
         {
 
         }
@@ -30,6 +30,9 @@ namespace Aveezo
 
         public Task BindModelAsync(ModelBindingContext bindingContext)
         {
+            var instance = (IFilter)Activator.CreateInstance(bindingContext.ModelType);
+            instance.Name = bindingContext.FieldName;
+
             var query = bindingContext.ValueProvider.GetValue(bindingContext.FieldName);
 
             if (query.FirstValue != null)
@@ -51,13 +54,10 @@ namespace Aveezo
                     else if (valueLower.StartsWith("not:", value, out var not)) values.Add(("not", not));
                     else values.Add((null, value));
                 }
-
-                var instance = (IFilter)Activator.CreateInstance(bindingContext.ModelType);
-                instance.Name = bindingContext.FieldName;
                 instance.Values = values.ToArray();
-
-                bindingContext.Result = ModelBindingResult.Success(instance);
             }
+
+            bindingContext.Result = ModelBindingResult.Success(instance);
 
             return Task.CompletedTask;
         }

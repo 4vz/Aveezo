@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Linq;
+
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,15 +15,15 @@ namespace Aveezo
     {
         #region Fields
 
-        protected string ConnectionString { get; set; }
+        public string ConnectionString { get; set; }
 
-        internal string User { get; init; }
+        public string User { get; init; }
 
         public int PacketSize { get; protected set; }
 
         public int StatementMaximumLength => 1024 * PacketSize;
 
-        internal string UseDatabase { get; set; } = null;
+        public string UseDatabase { get; set; } = null;
 
         public string Database { get; protected set; } = null;
 
@@ -44,297 +44,24 @@ namespace Aveezo
 
         #region Methods
 
-        internal void Use(string database)
+        public void Use(string database)
         {
             UseDatabase = database;
         }
-          
-        internal string FormatValue(object obj)
-        {
-            if (obj == null)
-                return NullValue;
-            else if (obj is bool boolean)
-                return boolean ? TrueValue : FalseValue;
-            else if (obj is DateTime time)
-                return FormatValue(time.ToDateTimeOffset());
-            else if (obj is DateTimeOffset timeOffset)
-                return FormatString(FormatDateTimeOffset(timeOffset));
-            else if (obj is string str)
-                return FormatString(EscapeString(str));
-            else if (obj.IsNumeric())
-                return FormatNumber(obj);
-            else if (obj is BitArray bitArray)
-                return FormatBinary(bitArray);
-            else if (obj is byte[] byteArray)
-                return FormatByteArray(byteArray);
-            else if (obj is Array array)
-                return FormatArray(array);
-            else
-                return FormatValue(obj.ToString());
-        }
 
-        internal string FormatConditionValue(object obj)
-        {
-            if (obj is Array array)
-            {
-                var entries = new List<string>();
-                foreach (var o in array) entries.Add(FormatValue(o));
-                if (entries.Count == 1)
-                    return $"{entries[0]}";
-                else
-                    return $"({entries.Join(", ")})";
-            }
-            else if (obj is IList list)
-            {
-                var entries = new List<string>();
-                foreach (var o in list) entries.Add(FormatValue(o));
-                if (entries.Count == 1)
-                    return $"{entries[0]}";
-                else
-                    return $"({entries.Join(", ")})";
-            }
-            else if (obj is ITuple tuple)
-            {
-                throw new NotImplementedException();
-            }
-            else
-                return FormatValue(obj);
-        }
-
-        internal string FormatCondition(SqlCondition condition)
-        {
-            if (condition is null)
-                return null;
-            else if (condition.Condition1 is not null && condition.Condition2 is not null)
-            {
-                var a = FormatCondition(condition.Condition1);
-                var b = FormatCondition(condition.Condition2);
-
-                if (a != null && b != null)
-                {
-                    return $"({a}) {FromBooleanOperator(condition.BooleanOperator)} ({b})";
-                }
-                else
-                    return null;
-            }
-            else if (condition.Column is not null)
-            {
-                if (condition.Value == null)
-                {
-                    return $"{condition.Column} {FromNullComparativeOperator(condition.ComparativeOperator)} {FormatConditionValue(condition.Value)}";
-                }
-                else if (condition.Value is SqlColumn)
-                {
-                    return $"{condition.Column} {FromComparativeOperator(condition.ComparativeOperator)} {condition.Value}";
-                }
-                else 
-                {
-                    if (condition.ComparativeOperator == SqlComparasionOperator.In || condition.ComparativeOperator == SqlComparasionOperator.NotIn)
-                    {
-                        if (condition.Value is Array array && array.Length == 1 || condition.Value is IList list && list.Count == 1)
-                            return $"{condition.Column} {FromComparativeOperator(condition.ComparativeOperator == SqlComparasionOperator.In ? SqlComparasionOperator.EqualTo : SqlComparasionOperator.NotEqualTo)} {FormatConditionValue(condition.Value)}";
-                        else
-                            return $"{condition.Column} {FromInclusionComparativeOperator(condition.ComparativeOperator)} {FormatConditionValue(condition.Value)}";
-                    }
-                    else
-                    {
-                        return $"{condition.Column} {FromComparativeOperator(condition.ComparativeOperator)} {FormatConditionValue(condition.Value)}";
-                    }
-                }
-            }
-            else if (condition.Value is not null)
-            {
-                if (condition.Value is bool b)
-                {
-                    if (b)
-                        return $"{TrueValue} = {TrueValue}";
-                    else
-                        return $"{TrueValue} = {FalseValue}";
-                }
-                else
-                    return null;
-            }
-            else
-                return null;
-
-        }
-
-        internal string FormatQuery(object obj)
-        {
-            if (obj is Array array)
-            {
-                var entries = new List<string>();
-                foreach (var o in array) entries.Add(FormatValue(o));
-                return $"({entries.Join(", ")})";
-            }
-            else if (obj is Dictionary<string, object> dict)
-            {
-                var entries = new List<string>();
-                foreach (var (key, value) in dict) entries.Add($"{key} = {FormatValue(value)}");
-                return $"{entries.Join(", ")}";
-            }
-            else if (obj is IList list)
-                return FormatQuery(list.ToArray<object>());
-            else if (obj is ITuple tuple)
-                return FormatQuery(tuple.ToArray());
-            else if (obj is SqlInsertTableEntry entry)
-                return FormatQuery(entry.Values);
-            else
-                return FormatQuery(obj.Array());
-        }
-
-        private string FromBooleanOperator(SqlConjunctionOperator op) =>
-            op switch
-            {
-                SqlConjunctionOperator.And => "and",
-                SqlConjunctionOperator.Or => "or",
-                _ => "and"
-            };
-
-        private string FromComparativeOperator(SqlComparasionOperator op) =>
-            op switch
-            {
-                SqlComparasionOperator.EqualTo => "=",
-                SqlComparasionOperator.NotEqualTo => "<>",
-                SqlComparasionOperator.Like => "like",
-                SqlComparasionOperator.NotLike => "not like",
-                SqlComparasionOperator.LessThan => "<",
-                SqlComparasionOperator.GreaterThan => ">",
-                SqlComparasionOperator.LessThanOrEqualTo => "<=",
-                SqlComparasionOperator.GreaterThanOrEqualTo => ">=",
-                _ => "="
-            };
-
-        private string FromInclusionComparativeOperator(SqlComparasionOperator op) =>
-            op switch
-            {
-                SqlComparasionOperator.In => "in",
-                SqlComparasionOperator.NotIn => "not in",
-                _ => "in"
-            };
-
-        private string FromNullComparativeOperator(SqlComparasionOperator op) =>
-            op switch
-            {
-                SqlComparasionOperator.EqualTo => "is",
-                SqlComparasionOperator.NotEqualTo => "is not",
-                _ => "is"
-            };
-
-        internal string Select(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, int offset, SqlSelectOptions options)
-        {
-            if (limit == 0 && offset == 0)
-            {
-                return Select(table, columns, joins, where, order, options);
-            }
-            else if (limit > 0 && offset == 0)
-            {
-                return SelectLimit(table, columns, joins, where, order, limit, options);
-            }
-            else
-            {
-                return SelectLimitOffset(table, columns, joins, where, order, limit, offset, options);
-            }
-        }
-       
-        private string GetColumnStatement(SqlColumn column)
-        {
-            var sb = new StringBuilder();
-
-            if (column.ConcatColumns != null)
-            {
-                sb.Append("concat(");
-
-                var index = 0;
-
-                foreach (var columnColumn in column.ConcatColumns)
-                {
-                    if (columnColumn is not null)
-                    {
-                        if (index > 0)
-                            sb.Append(", ");
-
-                        if (columnColumn is SqlColumn value)
-                            sb.Append(GetColumnStatement(value));
-                        else
-                            sb.Append(FormatValue(columnColumn.Value));
-
-                        index++;
-                    }
-                }
-                sb.Append(')');
-            }
-            else
-                sb.Append(column.ToString());
-
-            return sb.ToString();
-        }
-
-        protected string GetColumnStatement(SqlColumn[] columns)
-        {
-            var sb = new StringBuilder();
-
-            if (columns == null || columns.Length == 0)
-                return "*";
-            else
-            {
-                foreach (var column in columns)
-                {
-                    if (sb.Length > 0)
-                        sb.Append(", ");
-
-                    sb.Append(FormatColumn(GetColumnStatement(column), column.Alias));
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        protected string GetOrderStatement(SqlOrder order) => (order is not null) ? order.Statement : null;
-
-        protected string GetWhereStatement(SqlCondition where) => (where is not null) ? FormatCondition(where) : null;
-
-        protected string GetJoinStatement(SqlJoin[] joins)
-        {
-            var sb = new StringBuilder();
-
-            foreach (var join in joins)
-            {
-                if (join.WhereCondition is not null)
-                {
-                    if (join.Type == SqlJoinType.Inner) sb.Append($" inner join");
-                    else if (join.Type == SqlJoinType.Left) sb.Append($" left join");
-                    else if (join.Type == SqlJoinType.Right) sb.Append($" right join");
-                    else if (join.Type == SqlJoinType.Full) sb.Append($" full join");
-
-                    sb.Append($" {GetTableStatement(join.Table)} on {GetWhereStatement(join.WhereCondition)}");
-                }
-                else
-                {
-                    sb.Append($", {GetTableStatement(join.Table)}");
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        protected string GetTableStatement(SqlTable table) => FormatTable(table.GetDefinition(), table.Alias, table.TableSample);
-
-        protected string Where(string where) => where.Cast(x => $" where {x}", "");
-
-        internal string[] Insert(string table, string[] columns, SqlInsertTableEntry[] entries, bool output)
+        public string[] Insert(SqlTable table, string[] columns, SqlInsertTableEntry[] entries, bool output)
         {
             var statements = new List<string>();
             var entriesIndex = 0;
 
             while (entriesIndex < entries.Length)
             {
-                var main = new StringBuilder(InsertIntoValues(table, columns, output));
+                var main = new StringBuilder(FormatInsertIntoValues(table, columns, output));
 
                 var valuesAppended = 0;
                 do
                 {
-                    var values = $"{(valuesAppended > 0 ? ", " : "")}{InsertValuesEntry(entries[entriesIndex], output)}";
+                    var values = $"{(valuesAppended > 0 ? ", " : "")}{FormatInsertValuesEntry(entries[entriesIndex], output)}";
 
                     if (main.Length + values.Length >= StatementMaximumLength) break;
                     else
@@ -346,7 +73,7 @@ namespace Aveezo
                 }
                 while (entriesIndex < entries.Length);
 
-                main.Append(InsertEndStatement(table, columns, output));
+                main.Append(FormatInsertEnd(table, columns, output));
 
                 statements.Add(main.ToString());
             }
@@ -354,7 +81,7 @@ namespace Aveezo
             return statements.ToArray();
         }
 
-        internal string[] Update(SqlUpdateEntry[] entries, bool output)
+        public string[] Update(SqlUpdateEntry[] entries, bool output)
         {
             var statements = new List<string>();
             var entriesIndex = 0;
@@ -365,7 +92,7 @@ namespace Aveezo
 
                 do
                 {
-                    var values = $"{(main.Length > 0 ? "; " : "")}{UpdateSetWhere(entries[entriesIndex].Table, FormatQuery(entries[entriesIndex].Update.Sets), (entries[entriesIndex].WhereCondition is null) ? null : FormatCondition(entries[entriesIndex].WhereCondition), output)}";
+                    var values = $"{(main.Length > 0 ? "; " : "")}{FormatUpdateSetWhere(entries[entriesIndex].Table, FormatQuery(entries[entriesIndex].Update.Sets), (entries[entriesIndex].WhereCondition is null) ? null : FormatCondition(entries[entriesIndex].WhereCondition), output)}";
 
                     if (main.Length + values.Length >= StatementMaximumLength) break;
                     else
@@ -382,7 +109,7 @@ namespace Aveezo
             return statements.ToArray();
         }
 
-        internal string[] UpdateTable(string table, string whereColumn, object[] keys, SqlUpdateTableEntry[] entries, bool output)
+        public string[] UpdateTable(SqlTable table, string whereColumn, object[] keys, SqlUpdateTableEntry[] entries, bool output)
         {
             var statements = new List<string>();
 
@@ -434,8 +161,8 @@ namespace Aveezo
                     }
 
                     setwhereSB.Append(' ');
-                    setwhereSB.Append(UpdateTableWhere(table, whereColumn, batchKeys.ToArray(), output));
-                        
+                    setwhereSB.Append(FormatUpdateTableWhere(table, whereColumn, batchKeys.ToArray(), output));
+
                     if (main.Length + setwhereSB.Length >= StatementMaximumLength) break;
                     else
                     {
@@ -452,7 +179,7 @@ namespace Aveezo
             return statements.ToArray();
         }
 
-        internal string[] Delete(SqlDeleteEntry[] entries, bool output)
+        public string[] Delete(SqlDeleteEntry[] entries, bool output)
         {
             var statements = new List<string>();
             var entriesIndex = 0;
@@ -463,7 +190,7 @@ namespace Aveezo
 
                 do
                 {
-                    var values = $"{(main.Length > 0 ? "; " : "")}{DeleteFromWhere(entries[entriesIndex].Table, FormatCondition(entries[entriesIndex].WhereCondition), output)}";
+                    var values = $"{(main.Length > 0 ? "; " : "")}{FormatDeleteFromWhere(entries[entriesIndex].Table, FormatCondition(entries[entriesIndex].WhereCondition), output)}";
 
                     if (main.Length + values.Length >= StatementMaximumLength) break;
                     else
@@ -480,7 +207,7 @@ namespace Aveezo
             return statements.ToArray();
         }
 
-        internal string[] DeleteTable(string table, string whereColumn, object[] whereKeys, bool output)
+        public string[] DeleteTable(SqlTable table, string whereColumn, object[] whereKeys, bool output)
         {
             var statements = new List<string>();
 
@@ -495,7 +222,7 @@ namespace Aveezo
                 {
                     batchEntries.Add(whereKeys[entriesIndex]);
 
-                    var value = DeleteTableFromWhere(table, whereColumn, batchEntries.ToArray(), output);
+                    var value = FormatDeleteTableFromWhere(table, whereColumn, batchEntries.ToArray(), output);
 
                     if (value.Length >= StatementMaximumLength) break;
                     else
@@ -513,11 +240,294 @@ namespace Aveezo
             return statements.ToArray();
         }
 
+        public string FormatValue(object obj)
+        {
+            if (obj == null)
+                return NullValue;
+            else if (obj is bool boolean)
+                return boolean ? TrueValue : FalseValue;
+            else if (obj is DateTime time)
+                return FormatValue(time.ToDateTimeOffset());
+            else if (obj is DateTimeOffset timeOffset)
+                return FormatString(FormatDateTimeOffset(timeOffset));
+            else if (obj is string str)
+                return FormatString(EscapeString(str));
+            else if (obj.IsNumeric())
+                return FormatNumber(obj);
+            else if (obj is BitArray bitArray)
+                return FormatBinary(bitArray);
+            else if (obj is byte[] byteArray)
+                return FormatByteArray(byteArray);
+            else if (obj is Array array)
+                return FormatArray(array);
+            else
+                return FormatValue(obj.ToString());
+        }
+
+        public string FormatConditionValue(object obj)
+        {
+            if (obj is Array array)
+            {
+                var entries = new List<string>();
+                foreach (var o in array) entries.Add(FormatValue(o));
+                if (entries.Count == 1)
+                    return $"{entries[0]}";
+                else
+                    return $"({entries.Join(", ")})";
+            }
+            else if (obj is IList list)
+            {
+                var entries = new List<string>();
+                foreach (var o in list) entries.Add(FormatValue(o));
+                if (entries.Count == 1)
+                    return $"{entries[0]}";
+                else
+                    return $"({entries.Join(", ")})";
+            }
+            else if (obj is ITuple tuple)
+            {
+                throw new NotImplementedException();
+            }
+            else
+                return FormatValue(obj);
+        }
+
+        public string FormatCondition(SqlCondition condition)
+        {
+            if (condition is null)
+                return null;
+            else if (condition.Condition1 is not null && condition.Condition2 is not null)
+            {
+                var a = FormatCondition(condition.Condition1);
+                var b = FormatCondition(condition.Condition2);
+
+                if (a != null && b != null)
+                {
+                    return $"({a}) {FormatBooleanOperator(condition.BooleanOperator)} ({b})";
+                }
+                else
+                    return null;
+            }
+            else if (condition.Column is not null)
+            {
+                if (condition.Value == null)
+                {
+                    return $"{FormatWhere(condition.Column)} {FormatNullComparativeOperator(condition.ComparativeOperator)} {FormatConditionValue(condition.Value)}";
+                }
+                else if (condition.Value is SqlColumn column)
+                {
+                    return $"{FormatWhere(condition.Column)} {FormatComparativeOperator(condition.ComparativeOperator)} {FormatWhere(column)}";
+                }
+                else
+                {
+                    if (condition.ComparativeOperator == SqlComparasionOperator.In || condition.ComparativeOperator == SqlComparasionOperator.NotIn)
+                    {
+                        if (condition.Value is Array array && array.Length == 1 || condition.Value is IList list && list.Count == 1)
+                            return $"{FormatWhere(condition.Column)} {FormatComparativeOperator(condition.ComparativeOperator == SqlComparasionOperator.In ? SqlComparasionOperator.EqualTo : SqlComparasionOperator.NotEqualTo)} {FormatConditionValue(condition.Value)}";
+                        else
+                            return $"{FormatWhere(condition.Column)} {FormatInclusionComparativeOperator(condition.ComparativeOperator)} {FormatConditionValue(condition.Value)}";
+                    }
+                    else
+                    {
+                        return $"{FormatWhere(condition.Column)} {FormatComparativeOperator(condition.ComparativeOperator)} {FormatConditionValue(condition.Value)}";
+                    }
+                }
+            }
+            else if (condition.Value is not null)
+            {
+                if (condition.Value is bool b)
+                {
+                    if (b)
+                        return $"{TrueValue} = {TrueValue}";
+                    else
+                        return $"{TrueValue} = {FalseValue}";
+                }
+                else
+                    return null;
+            }
+            else
+                return null;
+
+        }
+
+        public string FormatQuery(object obj)
+        {
+            if (obj is Array array)
+            {
+                var entries = new List<string>();
+                foreach (var o in array) entries.Add(FormatValue(o));
+                return $"({entries.Join(", ")})";
+            }
+            else if (obj is Dictionary<string, object> dict)
+            {
+                var entries = new List<string>();
+                foreach (var (key, value) in dict) entries.Add($"{key} = {FormatValue(value)}");
+                return $"{entries.Join(", ")}";
+            }
+            else if (obj is IList list)
+                return FormatQuery(list.ToArray<object>());
+            else if (obj is ITuple tuple)
+                return FormatQuery(tuple.ToArray());
+            else if (obj is SqlInsertTableEntry entry)
+                return FormatQuery(entry.Values);
+            else
+                return FormatQuery(obj.Array());
+        }
+
+        public string FormatBooleanOperator(SqlConjunctionOperator op) =>
+            op switch
+            {
+                SqlConjunctionOperator.And => "and",
+                SqlConjunctionOperator.Or => "or",
+                _ => "and"
+            };
+
+        public string FormatComparativeOperator(SqlComparasionOperator op) =>
+            op switch
+            {
+                SqlComparasionOperator.EqualTo => "=",
+                SqlComparasionOperator.NotEqualTo => "<>",
+                SqlComparasionOperator.Like => "like",
+                SqlComparasionOperator.NotLike => "not like",
+                SqlComparasionOperator.LessThan => "<",
+                SqlComparasionOperator.GreaterThan => ">",
+                SqlComparasionOperator.LessThanOrEqualTo => "<=",
+                SqlComparasionOperator.GreaterThanOrEqualTo => ">=",
+                _ => "="
+            };
+
+        public string FormatInclusionComparativeOperator(SqlComparasionOperator op) =>
+            op switch
+            {
+                SqlComparasionOperator.In => "in",
+                SqlComparasionOperator.NotIn => "not in",
+                _ => "in"
+            };
+
+        public string FormatNullComparativeOperator(SqlComparasionOperator op) =>
+            op switch
+            {
+                SqlComparasionOperator.EqualTo => "is",
+                SqlComparasionOperator.NotEqualTo => "is not",
+                _ => "is"
+            };
+
+        public string FormatSelect(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, int offset, SqlSelectOptions options)
+        {
+            if (limit == 0 && offset == 0)
+            {
+                return FormatSelect(table, columns, joins, where, order, options);
+            }
+            else if (limit > 0 && offset == 0)
+            {
+                return FormatSelectLimit(table, columns, joins, where, order, limit, options);
+            }
+            else
+            {
+                return FormatSelectLimitOffset(table, columns, joins, where, order, limit, offset, options);
+            }
+        }
+
+        public string FormatColumnOperations(SqlColumn column, bool canAlias)
+        {
+            if (column.Operation == SqlColumnOperation.Concat)
+            {
+                if (column.OperationColumns != null)
+                {
+                    var sb = new StringBuilder("concat(");
+                    sb.Append(column.OperationColumns.Invoke(o => FormatColumn(o, canAlias)).Filter(s => s is not null).Join(", "));
+                    sb.Append(")");
+                    return sb.ToString();
+                }
+                else
+                    throw new NotSupportedException();
+            }
+            else
+                throw new NotImplementedException();
+        }
+
+        public string FormatColumn(SqlColumn[] columns)
+        {
+            var sb = new StringBuilder();
+
+            if (columns == null || columns.Length == 0)
+                return "*";
+            else
+            {
+                foreach (var column in columns)
+                {
+                    if (sb.Length > 0)
+                        sb.Append(", ");
+
+                    sb.Append(FormatSelectColumn(column));
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        public string FormatFrom(SqlTable table) => FormatFrom(FormatFromAlias(table));
+
+        public string FormatJoin(SqlJoin[] joins)
+        {
+            if (joins != null && joins.Length > 0)
+            {
+                var sb = new StringBuilder();
+
+                foreach (var join in joins)
+                {
+                    if (join.WhereCondition is not null)
+                    {
+                        if (join.Type == SqlJoinType.Inner) sb.Append($" inner join");
+                        else if (join.Type == SqlJoinType.Left) sb.Append($" left join");
+                        else if (join.Type == SqlJoinType.Right) sb.Append($" right join");
+                        else if (join.Type == SqlJoinType.Full) sb.Append($" full join");
+
+                        sb.Append($" {FormatFromAlias(join.Table)} on {FormatCondition(join.WhereCondition)}");
+                    }
+                    else
+                    {
+                        sb.Append($", {FormatFromAlias(join.Table)}");
+                    }
+                }
+
+                return sb.ToString();
+            }
+            else
+                return null;
+        }
+
+        public string FormatWhere(SqlCondition where) => FormatWhere(FormatCondition(where));
+
+        public string FormatOrder(SqlOrder order)
+        {
+            if (order != null && order.Count > 0)
+            {
+                var sb = new StringBuilder();
+
+                foreach (var (col, ord) in order.Orders)
+                {
+                    if (sb.Length > 0) sb.Append(", ");
+
+                    var ascDesc = ord == Order.Ascending ? "asc" : "desc";
+
+                    sb.Append($"{FormatWhere(col)} {ascDesc}");
+                }
+
+                return FormatOrder(sb.ToString());
+            }
+            else
+                return null;
+        }
+
+
         #endregion
 
         #region Virtuals
 
         public virtual string NullValue => "null";
+
+        public virtual string AllValue => "*";
 
         public virtual string TrueValue => "TRUE";
 
@@ -527,11 +537,31 @@ namespace Aveezo
 
         public virtual string TestStatement => "select 1";
 
-        public virtual string OrderByNull => "(select null)";
+        public virtual string OrderByNull => "order by (select null)";
 
-        public virtual string FormatColumn(string name, string alias) => $"{name}{alias.Cast(s => $" as {s}")}";
+        public virtual string FormatFrom(string from) => $"from {from}";
 
-        public virtual string FormatTable(string name, string alias, float tableSample) => $"{name}{alias.Cast(s => $" as {s}")}";
+        public virtual string FormatWhere(string where) => where.Format(s => $"where {s}");
+
+        public virtual string FormatOrder(string order) => order.Format(s => $"order by {s}");
+
+        public virtual string FormatColumn(SqlColumn column) => FormatColumn(column, false);
+
+        public virtual string FormatColumn(SqlColumn column, bool canAlias) => 
+            canAlias && column.Alias != null ? column.Alias :
+            column.IsValue ? FormatValue(column.Value) :
+            column.Operation != SqlColumnOperation.None ? FormatColumnOperations(column, canAlias) :
+            $"{column.Table.Format(table => $"{table.Alias}.")}{column.Name}";
+
+        public virtual string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column, false)}{column.Alias.Format(s => $" as '{s}'")}";
+
+        public virtual string FormatWhere(SqlColumn column) => $"{FormatColumn(column, true)}";
+
+        public virtual string FormatFromWithSchemaOrNot(SqlTable table) => $"{table.Schema.Format(schema => $"{schema}.")}{table.Name}";
+
+        public virtual string FormatFromStatementOrTable(SqlTable table) => table.IsStatement ? $"({table.Name})" : FormatFromWithSchemaOrNot(table);
+
+        public virtual string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{table.Alias.Format(s => $" as '{s}'")}";
 
         public virtual string FormatNumber(object number) => number.ToString();
 
@@ -545,7 +575,7 @@ namespace Aveezo
 
         public virtual Type OverrideType(Type type) => type;
 
-        public virtual void Query(string sql, SqlResultCollection resultCollection, SqlQueryType queryType, out Exception exception, int commandTimeout)
+        public virtual void Query(string sql, SqlQuery resultCollection, SqlQueryType queryType, out Exception exception, int commandTimeout)
         {
             using IDisposable connection = GetConnection();
 
@@ -669,63 +699,47 @@ namespace Aveezo
             }
         }
 
-        public virtual string Select(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, SqlSelectOptions options) => SelectLimitOffset(table, columns, joins, where, order, 0, 0, options);
+        public virtual string FormatSelect(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, SqlSelectOptions options) => FormatSelectLimitOffset(table, columns, joins, where, order, 0, 0, options);
 
-        public virtual string SelectLimit(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, SqlSelectOptions options) => SelectLimitOffset(table, columns, joins, where, order, limit, 0, options);
+        public virtual string FormatSelectLimit(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, SqlSelectOptions options) => FormatSelectLimitOffset(table, columns, joins, where, order, limit, 0, options);
 
-        public virtual string SelectLimitOffset(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, int offset, SqlSelectOptions options)
+        public virtual string FormatSelectLimitOffset(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, int offset, SqlSelectOptions options)
         {
-            string r;
-            var sb = new StringBuilder();
+            SqlStatement s = "select";
 
-            sb.Append($"select ");
+            if (options.HasFlag(SqlSelectOptions.Distinct)) s += "distinct";
 
-            if (options.HasFlag(SqlSelectOptions.Distinct)) 
-                sb.Append("distinct ");
-
-            sb.Append($"{GetColumnStatement(columns)}");
-
-            sb.Append($" from {GetTableStatement(table)}");
-
-            if (joins.Length > 0)
-                sb.Append(GetJoinStatement(joins));
-
-            if (where is not null) 
-                sb.Append($" where {GetWhereStatement(where)}");
+            s += FormatColumn(columns);
+            s += FormatFrom(table);
+            s += FormatJoin(joins);
+            s += FormatWhere(where);
 
             if (limit > 0 || offset > 0)
             {
-                r = FormatLimitOffset(sb.ToString(), limit, offset, order);
+                var n = FormatLimitOffset(s, limit, offset, order);
+                s.Clear();
+                s += n;
             }
             else
             {
-                var orderSql = GetOrderStatement(order);
-
-                if (orderSql != null)
-                    sb.Append($" order by {orderSql} ");
-
-                r = sb.ToString();
+                s += FormatOrder(order);
             }
 
-            return r;
+            return s;
         }
 
         public virtual string FormatLimitOffset(string sql, int limit, int offset, SqlOrder order)
         {
-            var sb = new StringBuilder();
+            SqlStatement s = $"select * from (select avz_inner.*, row_number() over ({FormatOrder(order) ?? OrderByNull}) avz_row_number from (";
+            s += sql;
+            s += $") avz_inner) avz_outer where avz_row_number > {offset} and avz_row_number <= {(offset + limit)}";
 
-            var orderSql = GetOrderStatement(order);
-
-            sb.Append($"select * from (select avz_inner.*, row_number() over (order by {orderSql ?? OrderByNull}) avz_row_number from (");
-            sb.Append(sql);
-            sb.Append($") avz_inner) avz_outer where avz_row_number > {offset} and avz_row_number <= {(offset + limit)}");
-
-            return sb.ToString();
+            return s;
         }
 
         public virtual bool IsTableExists(SqlTable table)
         {
-            var rc = new SqlResultCollection();
+            var rc = new SqlQuery();
 
             var schema = table.Schema;
             var name = table.Name;
@@ -740,25 +754,25 @@ namespace Aveezo
                 return false;
         }
 
-        public virtual string InsertIntoValues(string table, string[] columns, bool output) => $"insert into {table}{(columns.Length > 0 ? $"({columns.Join(", ")})" : "")} values";
+        public virtual string FormatInsertIntoValues(SqlTable table, string[] columns, bool output) => $"insert into {table.Ident}{(columns.Length > 0 ? $"({columns.Join(", ")})" : "")} values";
 
-        public virtual string InsertValuesEntry(SqlInsertTableEntry entry, bool output) => $"{FormatQuery(entry)}";
+        public virtual string FormatInsertValuesEntry(SqlInsertTableEntry entry, bool output) => $"{FormatQuery(entry)}";
 
-        public virtual string InsertEndStatement(string table, string[] columns, bool output) => null;
+        public virtual string FormatInsertEnd(SqlTable table, string[] columns, bool output) => null;
 
-        public virtual string UpdateSetWhere(string table, string set, string where, bool output) => $"update {table} set {set}{Where(where)}";
+        public virtual string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatWhere(where)}";
 
-        public virtual string UpdateTableWhere(string table, string whereColumn, object[] whereKeys, bool output) => $"where {whereColumn} in {FormatQuery(whereKeys)}";
+        public virtual string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"where {whereColumn} in {FormatQuery(whereKeys)}";
 
-        public virtual string DeleteFromWhere(string table, string where, bool output) => $"delete from {table}{Where(where)}";
+        public virtual string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatWhere(where)}";
 
-        public virtual string DeleteTableFromWhere(string table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table} where {whereColumn} in {FormatQuery(whereKeys)}";
+        public virtual string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table.Ident} where {whereColumn} in {FormatQuery(whereKeys)}";
 
         #endregion
 
         #region Abstracts
 
-        public abstract bool GetPrimaryKeyColumn(string table, out string columnName);
+        public abstract bool GetPrimaryKeyColumn(SqlTable table, out string columnName);
 
         public abstract void Use(string database, object connection);
 

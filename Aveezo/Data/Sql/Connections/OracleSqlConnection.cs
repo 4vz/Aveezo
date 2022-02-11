@@ -2,7 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -18,7 +18,7 @@ namespace Aveezo
         {
             using var connection = new OracleConnection(ConnectionString);
 
-            var s = Collections.CreateDictionary(ConnectionString, Collections.Semicolon, Collections.Equal, StringOptions.ToLower, StringOptions.None);
+            var s = Collections.CreateDictionary(ConnectionString, Collections.Semicolon, Collections.Equal, StringConvertOptions.ToLower, StringConvertOptions.None);
 
             Database = connection.Database;
             
@@ -36,22 +36,22 @@ namespace Aveezo
 
         public override string OrderByNull => "null";
 
-        public override string FormatColumn(string name, string alias) => $"{name}{alias.Cast(s => $" {s}")}";
+        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.Format(s => $" '{s}'")}";
 
-        public override string FormatTable(string name, string alias, float tableSample) => $"{name}{(tableSample > 0 ? $" sample({tableSample})" : "")}{alias.Cast(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" sample({table.TableSample})" : "")}{table.Alias.Format(s => $" {s}")}";
 
         // Abstract
 
-        public override bool GetPrimaryKeyColumn(string table, out string columnName)
+        public override bool GetPrimaryKeyColumn(SqlTable table, out string columnName)
         {
             columnName = null;
 
-            var result = new SqlResultCollection();
+            var result = new SqlQuery();
 
             Query(@$"
 SELECT cols.column_name
 FROM all_constraints cons, all_cons_columns cols
-WHERE cols.table_name = '{table.ToUpper()}'
+WHERE cols.table_name = '{table.Name.ToUpper()}'
 AND cons.constraint_type = 'P'
 AND cons.constraint_name = cols.constraint_name
 AND cons.owner = cols.owner

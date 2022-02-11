@@ -549,8 +549,8 @@ namespace Aveezo
             }
 
             // get element configuration from objectProperty
-            if (objectProperty != null && objectProperty.Has(out XmlObjectAttribute xobja))
-                element.Options |= xobja.Options;
+            if (objectProperty != null && objectProperty.Has<XmlObjectAttribute>(out var xobja))
+                element.Options |= xobja[0].Options;
                         
             // handler process
             handler?.Invoke(obj, new XmlObjectEventArgs { Element = element, Parent = parent });

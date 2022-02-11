@@ -66,6 +66,47 @@ namespace Aveezo
 
             return list;
         }
+
+        public static (TKey, TValue)[] ToTupleArray<TKey, TValue>(this Dictionary<TKey, TValue> dictionary) => dictionary.ToList(o => (o.Key, o.Value)).ToArray();
+
+        public static bool Contains<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, KeyValuePair<TKey, TValue> item)
+        {
+            foreach (var (key, value) in dictionary)
+            {
+                if (Equals(key, item.Key) && Equals(value, item.Value))
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool Diff<TKey, TValue1, TValue2>(this Dictionary<TKey, TValue1> left, Dictionary<TKey, TValue2> right, Action<TKey, TValue1> onlyLeft, Action<TKey, TValue2> onlyRight, Action<TKey, TValue1, TValue2> both)
+        {
+            if (left == null) left = new();
+            if (right == null) right = new();
+
+            var same = true;
+
+            foreach (var (leftKey, leftValue) in left)
+            {
+                if (!right.ContainsKey(leftKey))
+                {
+                    same = false;
+                    onlyLeft?.Invoke(leftKey, leftValue);
+                }
+            }
+            foreach (var (rightKey, rightValue) in right)
+            {
+                if (!left.ContainsKey(rightKey))
+                {
+                    same = false;
+                    onlyRight?.Invoke(rightKey, rightValue);
+                }
+                else
+                    both?.Invoke(rightKey, left[rightKey], rightValue);
+            }
+
+            return same;
+        }
     }
 
     public static class SortedDictionaryExtensions

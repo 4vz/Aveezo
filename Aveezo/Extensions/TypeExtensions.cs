@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,25 +9,32 @@ namespace Aveezo
 {
     public static class TypeExtensions
     {
-        public static bool Has<T>(this Type type) where T : Attribute => type.Has(out T _, false);
+        public static bool Has<T>(this Type type) where T : Attribute => type.Has(out Values<T> _, false);
 
-        public static bool Has<T>(this Type type, bool inherit) where T : Attribute => type.Has(out T _, inherit);
+        public static bool Has<T>(this Type type, bool inherit) where T : Attribute => type.Has(out Values<T> _, inherit);
 
-        public static bool Has<T>(this Type type, out T attribute) where T : Attribute => type.Has(out attribute, false);
+        public static bool Has<T>(this Type type, out Values<T> attributes) where T : Attribute => type.Has(out attributes, false);
 
-        public static bool Has<T>(this Type type, out T attribute, bool inherit) where T : Attribute
+        public static bool Has<T>(this Type type, out Values<T> attributes, bool inherit) where T : Attribute
         {
-            attribute = null;
+            if (type == null) throw new ArgumentNullException(nameof(type));
+
+            var list = new List<T>();
 
             foreach (var item in type.GetCustomAttributes(inherit))
             {
                 if (item is T at)
                 {
-                    attribute = at;
-                    break;
+                    list.Add(at);
                 }
             }
-            return attribute != null;
+
+            if (list.Count > 0)
+                attributes = list.ToArray();
+            else
+                attributes = null;
+
+            return attributes != null;
         }        
 
         public static bool IsDictionary(this Type type, out Type key, out Type value)

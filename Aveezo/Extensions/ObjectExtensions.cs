@@ -39,7 +39,7 @@ namespace Aveezo
 
         public static bool Contains<T>(this T[] array, T find) => array.Find(t => find != null && find.Equals(t)) != null;
 
-        public static TResult[] Cast<TResult>(this Array array, Func<object, TResult> cast)
+        public static TResult[] Invoke<TResult>(this Array array, Func<object, TResult> cast)
         {
             var list = new List<TResult>();
 
@@ -51,7 +51,7 @@ namespace Aveezo
             return list.ToArray();
         }
 
-        public static TResult[] Cast<T, TResult>(this T[] array, Func<T, TResult> cast)
+        public static TResult[] Invoke<T, TResult>(this T[] array, Func<T, TResult> cast)
         {
             var list = new List<TResult>();
 
@@ -63,9 +63,11 @@ namespace Aveezo
             return list.ToArray();
         }
 
-        public static TResult Cast<T, TResult>(this T x, Func<T, TResult> f) => x is null ? default : f(x);
+        public static TResult Format<T, TResult>(this T x, Func<T, TResult> f) => x is null ? default : f(x);
 
-        public static TResult Cast<T, TResult>(this T x, Func<T, TResult> f, TResult ifnull) => x is null ? ifnull : f(x);
+        public static TResult Format<T, TResult>(this T x, Func<T, TResult> f, TResult ifnull) => x is null ? ifnull : f(x);
+
+        public static string Format<T>(this T x, string format) => x.Format(o => string.Format(format, o));
 
         public static T Cast<T>(this object value)
         {
@@ -206,6 +208,18 @@ namespace Aveezo
             obj = value;
             return filter(obj);
         }
+
+        public static bool? TrueFalse<T>(this T value, T trueIfValue, T falseIfValue)
+        {
+            if (Equals(value, trueIfValue))
+                return true;
+            else if (Equals(value, falseIfValue))
+                return false;
+            else
+                return null;
+        }
+
+        public static T NullIf<T>(this T value, T when) => Equals(value, when) ? default : value;
 
     }
 }

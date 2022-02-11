@@ -35,7 +35,7 @@ namespace Aveezo
             Value = value;
         }
 
-        private SqlCondition(object value)
+        internal SqlCondition(object value)
         {
             Value = value;
         }
@@ -96,7 +96,7 @@ namespace Aveezo
 
         public static SqlCondition operator >=(SqlCondition column, object value) => new((SqlColumn)column, SqlComparasionOperator.GreaterThanOrEqualTo, value);
 
-        public static implicit operator SqlCondition(bool value) => new(value);
+        //public static implicit operator SqlCondition(bool value) => new(value);
 
         public override bool Equals(object obj)
         {

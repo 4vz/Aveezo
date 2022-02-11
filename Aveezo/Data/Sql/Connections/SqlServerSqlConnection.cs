@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Linq;
+
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -41,66 +41,62 @@ namespace Aveezo
 
         public override string DefaultSchema => null;
 
-        public override string FormatTable(string name, string alias, float tableSample) => $"{name}{(tableSample > 0 ? $" tablesample({tableSample})" : "")}{alias.Cast(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample({table.TableSample})" : "")}{table.Alias.Format(s => $" {s}")}";
 
-        public override string SelectLimit(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, SqlSelectOptions options)
+        public override string FormatSelectLimit(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, SqlSelectOptions options)
         {
-            var sb = new StringBuilder();
+            SqlStatement s = "select";
 
-            sb.Append($"select ");
             if (options.HasFlag(SqlSelectOptions.Distinct))
-                sb.Append("distinct ");
-            sb.Append($"top {limit} {GetColumnStatement(columns)} ");
-            sb.Append($"from {GetTableStatement(table)}");
+                s += "distinct";
 
-            if (joins.Length > 0)
-                sb.Append(GetJoinStatement(joins));
+            s += $"top {limit} {FormatColumn(columns)}";
 
-            if (where is not null)
-                sb.Append($" where {GetWhereStatement(where)} ");
+            s += FormatFrom(table);
+            s += FormatJoin(joins);
+            s += FormatWhere(where);
+            s += FormatOrder(order);
 
-            var orderSql = GetOrderStatement(order);
-            if (orderSql != null)
-                sb.Append($"order by {orderSql} ");
-
-            return sb.ToString();
+            return s;
         }
 
         public override string FormatLimitOffset(string sql, int limit, int offset, SqlOrder order)
         {
-            var sb = new StringBuilder();
+            SqlStatement s = sql;
 
-            sb.AppendLine(sql);
-
-            var orderSql = GetOrderStatement(order);
+            var orderSql = FormatOrder(order);
 
             if (orderSql != null)
             {
-                sb.AppendLine($"order by {orderSql}");
-                sb.AppendLine($"offset {offset} rows");
-                sb.AppendLine($"fetch next {limit} rows only");
+                s += orderSql;
+                s += $" offset {offset} rows";
+                s += $" fetch next {limit} rows only";
+            }
+            else
+            {
+                // offset limit without oder
             }
 
-            return sb.ToString();
+            return s;
         }
 
-        public override string InsertIntoValues(string table, string[] columns, bool output) => $"insert into {table}({columns.Join(", ")}){FormatOutput(output)} values";
+        public override string FormatInsertIntoValues(SqlTable table, string[] columns, bool output) => $"insert into {table.Ident}({columns.Join(", ")}){FormatOutput(output)} values";
 
-        public override string UpdateSetWhere(string table, string set, string where, bool output) => $"update {table} set {set}{FormatOutput(output)}{Where(where)}";
+        public override string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatOutput(output)}{FormatWhere(where)}";
 
-        public override string UpdateTableWhere(string table, string whereColumn, object[] whereKeys, bool output) => $"{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
+        public override string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
 
-        public override string DeleteFromWhere(string table, string where, bool output) => $"delete from {table}{FormatOutput(output)}{Where(where)}";
+        public override string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatOutput(output)}{FormatWhere(where)}";
 
-        public override string DeleteTableFromWhere(string table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table}{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
+        public override string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table.Ident}{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
 
         // Abstract 
 
-        public override bool GetPrimaryKeyColumn(string table, out string columnName)
+        public override bool GetPrimaryKeyColumn(SqlTable table, out string columnName)
         {
             columnName = null;
 
-            var result = new SqlResultCollection();
+            var result = new SqlQuery();
 
             Query(@$"SELECT Col.Column_Name from 
     INFORMATION_SCHEMA.TABLE_CONSTRAINTS Tab, 
@@ -109,7 +105,7 @@ WHERE
     Col.Constraint_Name = Tab.Constraint_Name
     AND Col.Table_Name = Tab.Table_Name
     AND Constraint_Type = 'PRIMARY KEY'
-    AND Col.Table_Name = '{table}'", result, SqlQueryType.Reader, out _, 10000);
+    AND Col.Table_Name = '{table.Name}'", result, SqlQueryType.Reader, out _, 10000);
 
 
             if (result)

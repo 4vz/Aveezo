@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Aveezo
 {
-    public sealed class SqlInsertTable : SqlManipulationBase
+    public sealed class SqlInsertTable : SqlExecuteBase
     {
         #region Fields
 
@@ -16,7 +16,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlInsertTable(string table, Sql database, string[] columns) : base(table, database, SqlQueryType.Execute)
+        internal SqlInsertTable(Sql database, SqlTable table, string[] columns) : base(database, table, SqlQueryType.Execute)
         {
             this.columns = columns;
         }
@@ -53,7 +53,7 @@ namespace Aveezo
             return this;
         }
 
-        protected override string[] GetStatements() => Database.Connection.Insert(Table, columns, entries.ToArray(), OutputResult);
+        protected override string[] GetStatements(Values<string> _) => Database.Connection.Insert(Table, columns, entries.ToArray(), OutputResult);
 
         #endregion
     }

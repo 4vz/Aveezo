@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Aveezo
 {
-    public sealed class SqlUpdateTable : SqlManipulationBase
+    public sealed class SqlUpdateTable : SqlExecuteBase
     {
         #region Fields
 
@@ -16,7 +16,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdateTable(string table, Sql database, string whereColumn) : base(table, database, SqlQueryType.Execute)
+        internal SqlUpdateTable(Sql database, SqlTable table, string whereColumn) : base(database, table, SqlQueryType.Execute)
         {
             WhereColumn = whereColumn;
         }
@@ -39,7 +39,7 @@ namespace Aveezo
             }
         }
 
-        protected override string[] GetStatements()
+        protected override string[] GetStatements(Values<string> _)
         {
             if (entries.Count > 0)
             {
@@ -78,7 +78,7 @@ namespace Aveezo
     {
         #region Fields
 
-        private SqlManipulationBase updateTable;
+        private SqlExecuteBase updateTable;
 
         public object Where { get; }
 
@@ -86,7 +86,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdateTableEntry(Sql database, string table, object where, SqlManipulationBase updateTable) : base(database, table)
+        internal SqlUpdateTableEntry(Sql database, SqlTable table, object where, SqlExecuteBase updateTable) : base(database, table)
         {
             Where = where;
             this.updateTable = updateTable;
@@ -96,7 +96,7 @@ namespace Aveezo
 
         #region Methods
 
-        public SqlManipulationBase Set(string column, object value)
+        public SqlExecuteBase Set(string column, object value)
         {
             if (!Update.Sets.ContainsKey(column))
                 Update.Sets.Add(column, value);

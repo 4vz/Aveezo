@@ -10,9 +10,9 @@ namespace Aveezo
     {
         private static System.Security.Cryptography.MD5 md5 = null;
 
-        private static SHA256Managed sha256Managed = null;
+        private static System.Security.Cryptography.SHA256 sha256 = null;
 
-        private static SHA512Managed sha512Managed = null;
+        private static System.Security.Cryptography.SHA512 sha512 = null;
 
         public static string MD5(string input)
         {
@@ -42,10 +42,10 @@ namespace Aveezo
 
         public static byte[] SHA256(byte[] input)
         {
-            if (sha256Managed == null)
-                sha256Managed = new SHA256Managed();
+            if (sha256 == null)
+                sha256 = System.Security.Cryptography.SHA256.Create();
 
-            return sha256Managed.ComputeHash(input);
+            return sha256.ComputeHash(input);
         }
 
         public static byte[] SHA256(string input)
@@ -55,10 +55,10 @@ namespace Aveezo
 
         public static byte[] SHA512(byte[] input)
         {
-            if (sha512Managed == null)
-                sha512Managed = new SHA512Managed();
+            if (sha512 == null)
+                sha512 = System.Security.Cryptography.SHA512.Create();
 
-            return sha512Managed.ComputeHash(input);
+            return sha512.ComputeHash(input);
         }
 
         public static byte[] SHA512(string input)

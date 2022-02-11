@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
+
 using System.Text;
 
 namespace Aveezo
@@ -17,9 +17,9 @@ namespace Aveezo
 
         public SqlCell First => cells.Length > 0 ? cells[0] : null;
 
-        public SqlCell this[int index] => index >= 0 && index < cells.Length ? cells[index] : null;
+        public SqlCell this[int index] => index >= 0 && index < cells.Length ? cells[index] : throw new IndexOutOfRangeException(nameof(index));
 
-        public SqlCell this[string key] => result.ColumnIndex.ContainsKey(key) ? cells[result.ColumnIndex[key]] : null;
+        public SqlCell this[string key] => result.ColumnIndex.ContainsKey(key) ? cells[result.ColumnIndex[key]] : throw new KeyNotFoundException(nameof(key));
 
         public (SqlCell, SqlCell) this[string key1, string key2]
             => (this[key1], this[key2]);

@@ -7,7 +7,7 @@ using System.Text;
 namespace Aveezo
 {
 
-    public abstract class SqlUpdateEntryBase : SqlManipulationBase
+    public abstract class SqlUpdateEntryBase : SqlExecuteBase
     {
         #region Fields
 
@@ -17,7 +17,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdateEntryBase(Sql database, string table) : base(table, database, SqlQueryType.Execute)
+        internal SqlUpdateEntryBase(Sql database, SqlTable table) : base(database, table, SqlQueryType.Execute)
         {
             Update = new SqlUpdateSets();
         }

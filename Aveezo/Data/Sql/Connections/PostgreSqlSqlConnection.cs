@@ -32,7 +32,7 @@ namespace Aveezo
 
         // Virtual
 
-        public override string FormatTable(string name, string alias, float tableSample) => $"{name}{(tableSample > 0 ? $" tablesample system({tableSample})" : "")}{alias.Cast(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample system({table.TableSample})" : "")}{table.Alias.Format(s => $" {s}")}";
 
         public override Type OverrideType(Type type)
         {
@@ -40,27 +40,27 @@ namespace Aveezo
             else return type;
         }
 
-        public override string InsertEndStatement(string table, string[] columns, bool output) => FormatReturning(output);
+        public override string FormatInsertEnd(SqlTable table, string[] columns, bool output) => FormatReturning(output);
 
-        public override string UpdateSetWhere(string table, string set, string where, bool output) => $"update {table} set {set}{Where(where)}{FormatReturning(output)}";
+        public override string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatWhere(where)}{FormatReturning(output)}";
 
-        public override string UpdateTableWhere(string table, string whereColumn, object[] whereKeys, bool output) => $"where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
+        public override string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
 
-        public override string DeleteFromWhere(string table, string where, bool output) => $"delete from {table}{Where(where)}{FormatReturning(output)}";
+        public override string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatWhere(where)}{FormatReturning(output)}";
 
-        public override string DeleteTableFromWhere(string table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table} where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
+        public override string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table.Ident} where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
 
         // Abstract
 
-        public override bool GetPrimaryKeyColumn(string table, out string columnName)
+        public override bool GetPrimaryKeyColumn(SqlTable table, out string columnName)
         {
             columnName = null;
 
-            var result = new SqlResultCollection();
+            var result = new SqlQuery();
 
             Query(@$"
 SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-WHERE i.indrelid = '{table}'::regclass AND i.indisprimary;
+WHERE i.indrelid = '{table.Name}'::regclass AND i.indisprimary;
 ", result, SqlQueryType.Reader, out _, 10000);
 
             if (result)
@@ -229,7 +229,7 @@ ALTER TABLE {DefaultSchema}.{SqlService.ServiceTable}
 
                 regs.Add((schemafunction, schematable, schema, function, table));
 
-                if (!triggerfunctions.Cast().Contains(schemafunction, 0))
+                if (!triggerfunctions.ToITuple().Contains(schemafunction, 0))
                 {
                     admin.Execute($@"
 CREATE FUNCTION {schemafunction}()
@@ -261,7 +261,7 @@ OWNER TO {sql.User};
 
             foreach (var (schemafunction, schematable, _, _, _) in regs)
             {
-                if (!tabletriggers.Cast().Contains(schematable, 0))
+                if (!tabletriggers.ToITuple().Contains(schematable, 0))
                 {
                     admin.Execute($@"
 CREATE TRIGGER {SqlService.ServiceTrigger}
@@ -276,7 +276,7 @@ EXECUTE PROCEDURE {schemafunction}();
 
             foreach (var tabletrigger in tabletriggers)
             {
-                if (!regs.Cast().Contains(tabletrigger.Item1, 1))
+                if (!regs.ToITuple().Contains(tabletrigger.Item1, 1))
                 {
                     var schematable = tabletrigger.Item1;
                     admin.Execute($"DROP TRIGGER {SqlService.ServiceTrigger} ON {schematable}");
@@ -286,7 +286,7 @@ EXECUTE PROCEDURE {schemafunction}();
 
             foreach (var triggerfunction in triggerfunctions)
             {
-                if (!regs.Cast().Contains(triggerfunction.Item1, 0))
+                if (!regs.ToITuple().Contains(triggerfunction.Item1, 0))
                 {
                     var schemafunction = triggerfunction.Item1;
                     admin.Execute($"DROP FUNCTION {schemafunction}()");

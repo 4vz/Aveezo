@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,9 +13,9 @@ namespace Aveezo
 
         private readonly List<(SqlColumn, Order)> orders = new();
 
-        public int Count => orders.Count;
+        internal (SqlColumn, Order)[] Orders => orders.ToArray();
 
-        public string Statement => GetStatement();
+        public int Count => orders.Count;
 
         #endregion
 
@@ -61,26 +61,8 @@ namespace Aveezo
 
         public void Add(SqlColumn column, Order order)
         {
-            if (!column.All)
+            if (!column.IsAll)
                 orders.Add((column, order));
-        }
-
-        private string GetStatement()
-        {
-            if (Count > 0)
-            {
-                var sb = new StringBuilder();
-
-                foreach (var (col, ord) in orders)
-                {
-                    if (sb.Length > 0) sb.Append(", ");
-                    sb.Append($"{col} {(ord == Order.Ascending ? "asc" : "desc")}");
-                }
-
-                return sb.ToString();
-            }
-            else
-                return null;
         }
 
         public IEnumerator<(SqlColumn, Order)> GetEnumerator() => orders.GetEnumerator();

@@ -71,6 +71,7 @@ namespace Aveezo
                     var apiVersion = new ApiVersion(vers, 0, group);
 
                     if (controllerModel.Attributes.OfType<ObsoleteAttribute>().Any()) controller.HasDeprecatedApiVersion(apiVersion!);
+
                     else controller.HasApiVersion(apiVersion!);
 
                     return true;

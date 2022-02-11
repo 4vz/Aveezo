@@ -2,117 +2,113 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Aveezo
+namespace Aveezo;
+
+public enum SqlColumnOperation
 {
-    public enum SqlColumnOperation
+    None,
+    Concat
+}
+
+public class SqlColumn : SqlCondition
+{
+    #region Fields
+
+    public SqlTable Table { get; internal set; }
+
+    public string Name { get; } = null;
+
+    public string Alias { get; set; } = null;
+
+    public bool IsValue { get; internal set; } = false;
+
+    public bool IsAll { get; } = false;
+
+    public new object Value { get; internal set; } = null;
+
+    /// <summary>
+    /// Column alias if available, otherwise returns column name;
+    /// </summary>
+    public string Ident => Alias ?? Name;
+
+    public SqlColumnOperation Operation { get; } = SqlColumnOperation.None;
+
+    public SqlColumn[] OperationColumns { get; }
+
+    #endregion
+
+    #region Constructors
+
+    public SqlColumn(SqlTable table, string name, string alias)
     {
-        Concat
+        Table = table;
+        Name = name;
+        Alias = alias;
+        IsAll = false;
     }
 
-    public class SqlColumn : SqlColumnBase
+    public SqlColumn(SqlTable table, string name)
     {
-        #region Fields
-
-        public SqlTable Table { get; internal set; }
-
-        public string Name { get; }
-
-        public bool All { get; }
-
-        public string Alias { get; set; }
-
-        internal SqlColumnBase[] ConcatColumns { get; }
-
-        #endregion
-
-        #region Constructors
-
-        public SqlColumn(SqlTable table, string name)
-        {
-            Table = table;
-            Name = name;
-            All = false;
-        }
-
-        public SqlColumn(SqlTable table)
-        {
-            Table = table;
-            All = true;
-        }
-
-        public SqlColumn(SqlColumnOperation operation, SqlColumnBase[] args)
-        {
-            if (operation == SqlColumnOperation.Concat)
-                ConcatColumns = args;
-        }
-
-        #endregion
-
-        #region Operators
-
-        public static implicit operator SqlColumn(string name)
-        {
-            return new SqlColumn(null, name);
-        }
-
-        #endregion
-
-        #region Methods
-        public override string ToString() => $"{Alias ?? ($"{(Table != null ? $"{Table}." : "")}{(All ? " *" : Name)}")   }";
-
-        #endregion
-
-        #region Statics
-
-        public static SqlColumn Concat(string alias, params SqlColumnBase[] args)
-        {
-            var column = new SqlColumn(SqlColumnOperation.Concat, args);
-            column.Alias = alias;
-            return column;
-        }
-
-
-        #endregion
+        Table = table;
+        Name = name;
+        IsAll = false;
     }
 
-    public class SqlColumnBase : SqlCondition
+    public SqlColumn(SqlTable table)
     {
-        #region Fields
-
-        public new object Value { get; }
-
-        #endregion
-
-        #region Constructors
-
-        internal SqlColumnBase(object value)
-        {
-            Value = value;
-        }
-
-        public SqlColumnBase()
-        {
-
-        }
-
-        #endregion
-
-        #region Operators
-
-        public static implicit operator SqlColumnBase(string value) => new SqlColumnBase(value);
-
-        public static implicit operator SqlColumnBase(int value) => new SqlColumnBase(value);
-
-        public static implicit operator SqlColumnBase(DateTime value) => new SqlColumnBase(value);
-
-        #endregion
-
-        #region Methods
-
-        #endregion
-
-        #region Statics
-
-        #endregion
+        Table = table;
+        IsAll = true;
     }
+
+    private SqlColumn(SqlColumnOperation operation, SqlColumn[] columns)
+    {
+        Operation = operation;
+        OperationColumns = columns;
+    }
+
+    #endregion
+
+    #region Operators
+
+    public static implicit operator SqlColumn(string name)
+    {
+        return new SqlColumn(null, name);
+    }
+
+    public static implicit operator SqlColumn(int value) => Static(value);
+
+    public static implicit operator SqlColumn(DateTime value) => Static(value);
+
+    #endregion
+
+    #region Statics
+
+    public static SqlColumn Concat(string alias, params SqlColumn[] columns)
+    {
+        var column = new SqlColumn(SqlColumnOperation.Concat, columns);
+        column.Alias = alias;
+        return column;
+    }
+
+    public static SqlColumn Static(object value)
+    {
+        var col = new SqlColumn(null, "", null);
+        col.IsValue = true;
+        col.Value = value;
+        return col;
+    }
+
+    public static SqlColumn Static(object value, string alias)
+    {
+        var col = new SqlColumn(null, "", alias);
+        col.IsValue = true;
+        col.Value = value;
+        return col;
+    }
+
+    public static SqlColumn Null => Static(null);
+
+    public static SqlColumn Empty => Static("");
+
+    #endregion
 }

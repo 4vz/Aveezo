@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Aveezo
 {
-    public interface IPagingResult
+    public interface IMethodResult
     {
         int Total { get; set; }
 
@@ -15,7 +15,7 @@ namespace Aveezo
         int Offset { get; set; }
     }
 
-    public class PagingResult<T> : IPagingResult
+    public class MethodResult<T> : IMethodResult
     {
         #region Fields
 
@@ -25,13 +25,15 @@ namespace Aveezo
 
         public int Offset { get; set; } = 0;
 
+        public string[] Fields { get; set; } = null;
+
         public T Result { get; set; }
 
         #endregion
 
         #region Constructors
 
-        public PagingResult()
+        public MethodResult()
         {
 
         }

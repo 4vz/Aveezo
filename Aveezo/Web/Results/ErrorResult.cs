@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,38 +10,32 @@ namespace Aveezo
     {
         #region Fields
 
-        public ErrorResultEntry[] Entries { get; set; }
+        public ErrorResultError Error { get; set; }
 
         #endregion
 
         #region Constructors
 
-        public ErrorResult()
+        public ErrorResult(int code, string source, string status, string message)
         {
-
-        }
-
-        public ErrorResult(string source, string error)
-        {
-            Entries = new ErrorResultEntry { Source = source, Errors = error.Array() }.Array();
-        }
-
-        public ErrorResult(string source, string[] errors)
-        {
-            Entries = new ErrorResultEntry { Source = source, Errors = errors }.Array();
+            Error = new ErrorResultError { Code = code, Source = source, Status = status, Message = message };
         }
 
         #endregion
     }
 
-    public class ErrorResultEntry
+    public class ErrorResultError
     {
-        #region Fields
+        public int Code { get; set; }
 
-        public string Source { get; set; }
+        // source of error
+        public string Source { get; set; } 
 
-        public string[] Errors { get; set; }
+        // status of error
+        public string Status { get; set; }
 
-        #endregion
+        public string Message { get; set; } 
+
+        public Dictionary<string, string[]> Details { get; set; }
     }
 }

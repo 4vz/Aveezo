@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Aveezo
 {
-    public class SqlDelete : SqlManipulationBase
+    public class SqlDelete : SqlExecuteBase
     {
         #region Fields
 
@@ -14,7 +14,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlDelete(Sql database) : base(null, database, SqlQueryType.Execute)
+        internal SqlDelete(Sql database) : base(database, null, SqlQueryType.Execute)
         {
             entries = new List<SqlDeleteEntry>();
         }
@@ -35,12 +35,12 @@ namespace Aveezo
                 throw new ArgumentNullException();
         }
 
-        protected override string[] GetStatements() => Database.Connection.Delete(entries.ToArray(), OutputResult);
+        protected override string[] GetStatements(Values<string> _) => Database.Connection.Delete(entries.ToArray(), OutputResult);
 
         #endregion
     }
 
-    public sealed class SqlDeleteEntry : SqlManipulationBase
+    public sealed class SqlDeleteEntry : SqlExecuteBase
     {
         #region Fields
 
@@ -50,7 +50,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlDeleteEntry(Sql database, string table) : base(table, database, SqlQueryType.Execute)
+        internal SqlDeleteEntry(Sql database, SqlTable table) : base(database, table, SqlQueryType.Execute)
         {
         }
 
@@ -88,7 +88,7 @@ namespace Aveezo
 
         public SqlDeleteEntry Where(SqlColumn leftColumn, SqlColumn rightColumn) => Where(leftColumn == rightColumn);
 
-        protected override string[] GetStatements() => Database.Connection.Delete(this.Array(), OutputResult);
+        protected override string[] GetStatements(Values<string> _) => Database.Connection.Delete(this.Array(), OutputResult);
 
         #endregion
     }

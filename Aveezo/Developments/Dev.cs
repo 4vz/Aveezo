@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,14 +13,14 @@ namespace Aveezo
         {
             stopwatch = new Stopwatch();
             stopwatch.Start();
-            return "Dev.Watch START";
+            return "Watch-Start";
         }
 
         public static string Watch(Stopwatch stopwatch)
         {
             var elapsed = stopwatch.Elapsed;
             stopwatch.Restart();
-            return $"Dev.Watch WATCH Elapsed: {elapsed.TotalMilliseconds} ms";
+            return $"Watch-Stop: {elapsed.TotalMilliseconds} ms";
         }
 
     }

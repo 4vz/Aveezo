@@ -10,21 +10,19 @@ namespace Aveezo
 
         internal SqlQueryType Type { get; set; }
 
-        public string Table { get; internal set; } = null;
+        public SqlTable Table { get; internal set; } = null;
 
-        public string[] Statements => GetStatements();
+        public string[] Statements => GetStatements(null);
 
         #endregion
 
         #region Constructors
 
-        internal SqlQueryBase(string table, Sql database, SqlQueryType type) : base(database)
+        internal SqlQueryBase(Sql database, SqlTable table, SqlQueryType type) : base(database)
         {
             Table = table;
             Type = type;
         }
-
-        internal SqlQueryBase(Sql database, SqlQueryType type) : this(null, database, type) { }
 
         #endregion
 
@@ -34,30 +32,35 @@ namespace Aveezo
 
         #region Methods
 
-        protected virtual string[] GetStatements() => throw new NotImplementedException();
+        protected virtual string[] GetStatements(Values<string> selectBuilders) => throw new NotImplementedException();
 
-        public SqlResultCollection Execute() => Execute(null);
-
-        protected SqlResultCollection Execute(string statement)
+        protected SqlQuery Execute(Values<string> selectBuilders, string statement)
         {
-            var result = new SqlResultCollection();
+            var query = new SqlQuery();
 
-            string[] sts = null;
+            if (selectBuilders != null)
+            {
+                query.select = (SqlSelect)this;
+                query.selectBuilders = selectBuilders;
+            }
+
+            string[] statements;
 
             if (statement != null)
-                sts = statement.Array();
-            else if (Statements != null)
-                sts = Statements;
+                statements = statement.Array();
             else
+                statements = GetStatements(selectBuilders);
+
+            if (statements == null || statements.Length == 0)
                 throw new InvalidOperationException();
 
-            foreach (string sql in sts)
+            foreach (string sql in statements)
             {
                 if (sql == null || sql.Trim() == "") continue;
 
-                SqlResultCollection currentResult = null;
+                SqlQuery currentResult = null;
 
-                if (Type == SqlQueryType.Reader || (this is SqlManipulationBase smb && (_ = smb.OutputResult)))
+                if (Type == SqlQueryType.Reader || (this is SqlExecuteBase smb && (_ = smb.OutputResult)))
                 {
                     currentResult = Database.FormatedQuery(sql, 0, 0, null);
 
@@ -79,20 +82,26 @@ namespace Aveezo
                     // combine item
                     foreach (var item in currentResult)
                     {
-                        result.Add(item);
+                        query.Add(item);
                     }
 
                     // combine exception
-                    if (result.Exception == null)
-                        result.Exception = currentResult.Exception;
+                    if (query.Exception == null)
+                        query.Exception = currentResult.Exception;
 
                     // combine execution time
-                    result.ExecutionTime += currentResult.ExecutionTime;
+                    query.ExecutionTime += currentResult.ExecutionTime;
                 }
             }
 
-            return result;
+            return query;
         }
+
+        public SqlQuery Execute() => Execute(null, null);
+
+        public SqlQuery Execute(Values<string> selectBuilders) => Execute(selectBuilders, null);
+
+        public SqlQuery Execute(string statement) => Execute(null, statement);
 
         public bool Execute(out SqlResult result)
         {

@@ -73,12 +73,12 @@ namespace Aveezo
 
         public static implicit operator SqlCell(SqlResult result) => (SqlRow)result;
 
-        public static SqlResultCollection operator +(SqlResult result1, SqlResult result2)
+        public static SqlQuery operator +(SqlResult result1, SqlResult result2)
         {
             if (result1 == null || result2 == null)
                 return null;
 
-            var result = new SqlResultCollection();
+            var result = new SqlQuery();
 
             // add items
             result.Add(result1);

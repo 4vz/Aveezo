@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -28,7 +28,7 @@ namespace Aveezo.Providers.Test.V1
         /// <returns>TestApiResponseModel</returns>
         [Post("object")]
         [Disabled]
-        public Result<TestApiObject> Model([Body] TestApiRequestObject body)
+        public Method<TestApiObject> Model([Body] TestApiRequestObject body)
         {
             var data = new TestApiObject
             {
@@ -95,10 +95,8 @@ namespace Aveezo.Providers.Test.V1
         }
 
         [Get("single")]
-        public Result<TestApiSimpleObject> Simple()
+        public Method<TestApiSimpleObject> Simple()
         {
-
-
             return null;
         }
     }

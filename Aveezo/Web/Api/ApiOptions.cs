@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -50,11 +50,7 @@ namespace Aveezo
 
         public string RoutePrefix { get; set; } = "/docs/api";
 
-        #endregion
-
-        #region Operators
-
-
+        public string[] AuthAvailableParameters { get; set; }
 
         #endregion
 

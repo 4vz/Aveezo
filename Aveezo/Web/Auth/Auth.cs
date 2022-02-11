@@ -1,10 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Policy;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,15 +13,14 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Aveezo
 {
-
     [PathNeutral("/auth"), EnableIf("EnableAuth", true)]
     public class Auth : Api
     {
         public Auth(IServiceProvider i) : base(i) { }
 
         [Get]
-        [Disabled]
-        public Result<AuthTokenResponse> Begin(
+        [NoAuth]
+        public Method<AuthTokenResponse> Begin(
             [Query("response_type"), Required] string responseType, 
             [Query("client_id")] string clientId,
             [Query("redirect_uri"), Required, Uri(UriProperties.IsAbsolute)] Uri redirectUri,
@@ -87,8 +80,8 @@ namespace Aveezo
         /// <param name="request"></param>
         /// <returns></returns>
         [Post("/token"), NoCache]
-        [Disabled]
-        public Result<AuthTokenResponse> GetToken(
+        [NoAuth]
+        public Method<AuthTokenResponse> GetToken(
             [Body] AuthTokenRequest request
             )
         {
@@ -98,102 +91,138 @@ namespace Aveezo
 
             if (grantType == "client_credentials")
             {
-                if (TokenAuthClient(request.ClientId, request.ClientSecret, out Guid? clientId, out Result<AuthTokenResponse> authClientResult))
+                if (TokenAuthClient("auth_token_client_credentials", request.ClientId, request.ClientSecret, out Guid? clientId, out Method<AuthTokenResponse> authClientResult))
                 {
-                    if (auth.AuthenticateClientScope(clientId.Value, request.Scope, out (string, Guid)[] validScope))
+                    if (auth.AuthenticateClientScope(clientId.Value, request.Scope, out Guid[] validScope))
                     {
-                        var scopes = validScope.Cast();
+                        string parameters = null;
+                        var rparameters = request.Parameters;
 
-                        var sessionId = auth.CreateSession(clientId.Value, null, scopes.ToArray<Guid>(1));
-                        var refreshToken = auth.CreateRefreshToken(sessionId, null);
-                        var accessToken = auth.CreateAccessToken(sessionId, scopes.ToArray<string>(0).Join());
-
-                        if (accessToken != null)
+                        if (Options.AuthAvailableParameters != null)
                         {
-                            var response = new AuthTokenResponse
+                            if (rparameters != null)
                             {
-                                AccessToken = accessToken,
-                                RefreshToken = refreshToken,
-                                ExpiresIn = Options.AuthAccessTokenExpire
-                            };
+                                List<string> li = new();
 
-                            return Ok(response);
+                                var pars = rparameters.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                                foreach (var par in pars)
+                                {
+                                    var pair = par.Split('=', 2);
+
+                                    var key = pair[0];
+                                    var value = pair[1];
+
+                                    if (Options.AuthAvailableParameters.Contains(key))
+                                    {
+                                        li.Add($"{key}={value}");
+                                    }
+                                }
+
+                                if (li.Count > 0)
+                                    parameters = li.Join(";");
+                                else
+                                    parameters = null;
+                            }
+                        }
+
+                        // create session
+                        if (auth.CreateSession(clientId.Value, null, validScope, parameters, out var sessionId))
+                        {
+                            // create access token
+                            var accessToken = auth.CreateAccessToken(sessionId.Value, out var refreshToken);
+
+                            if (accessToken != null)
+                            {
+                                var response = new AuthTokenResponse
+                                {
+                                    AccessToken = accessToken,
+                                    RefreshToken = $"{Base64.UrlEncode(sessionId.Value)}:{refreshToken}",
+                                    ExpiresIn = Options.AuthAccessTokenExpire
+                                };
+
+                                return Ok(response);
+                            }
+                            else
+                                return Unavailable($"accessToken from CreateAccessToken is null. SessionId: {sessionId}");
                         }
                         else
-                            return Unavailable();
+                            return Unavailable("Failed to create sessionId.");                   
                     }
                     else
-                        return NotFound("grant_client_credentials", "scope_undefined");
+                        return NotFound("auth_token_client_credentials", "INVALID_SCOPE", "Requested scope is invalid");
                 }
                 else 
                     return authClientResult;
             }
             else if (grantType == "refresh_token")
             {
-                if (auth.AuthenticateRefresh(request.RefreshToken, out Guid? refreshIdc, out Guid? sessionIdc, out bool expired))
+                if (request.RefreshToken != null)
                 {
-                    if (!expired)
+                    var ix = request.RefreshToken.Split(':');
+
+                    if (ix.Length == 2)
                     {
-                        var sessionId = sessionIdc.Value;
+                        var b64sid = ix[0];
+                        var refreshToken = ix[1];
 
-                        // refresh token is available to use
-                        string scope = null;
-
-                        // client want to change scope, check for authentication
-                        if (request.Scope != null)
+                        if (Base64.TryUrlGuidDecode(b64sid, out Guid? sid))
                         {
-                            /*TokenAuthClient(request, out Guid? clientIdc);
+                            var sessionId = sid.Value;
 
-                            if (clientIdc != null)
+                            if (auth.AuthenticateRefresh(sessionId, refreshToken))
                             {
-                                var clientId = clientIdc.Value;
+                                // create new access token
+                                var accessToken = auth.CreateAccessToken(sessionId, out var newRefreshToken);
 
-                                // client want to reauthenticate
-                                // want to change scope
-                                if (auth.AuthenticateClientScope(clientId, request.Scope, out (string, Guid)[] validScope))
+                                if (accessToken != null)
                                 {
-                                    var scopes = validScope.Cast();
-                                    auth.UpdateSessionScope(sessionId, scopes.ToArray<Guid>(1));
+                                    var response = new AuthTokenResponse
+                                    {
+                                        AccessToken = accessToken,
+                                        RefreshToken = $"{b64sid}:{newRefreshToken}",
+                                        ExpiresIn = Options.AuthAccessTokenExpire
+                                    };
 
-                                    scope = scopes.ToArray<string>(0).Join();
+                                    return Ok(response);
                                 }
-                            }*/
-                        }
-                        if (scope == null)
-                        {
-                            var sxc = auth.GetSessionScope(sessionId);
-                            scope = sxc.Cast().ToArray<string>(1).Join();
-                        }
-
-                        // create new refresh
-                        var refreshToken = auth.CreateRefreshToken(sessionId, refreshIdc.Value);
-                        var accessToken = auth.CreateAccessToken(sessionId, scope);
-
-                        if (accessToken != null)
-                        {
-                            var response = new AuthTokenResponse
-                            {
-                                AccessToken = accessToken,
-                                RefreshToken = refreshToken,
-                                ExpiresIn = Options.AuthAccessTokenExpire
-                            };
-
-                            return Ok(response);
+                                else
+                                    return Unavailable($"accessToken from CreateAccessToken is null. SessionId: {sessionId}");
+                            }
+                            else
+                                return Forbidden("auth_token_refresh_token", "REFRESH_TOKEN_FAILED", "Specified refresh token cannot be used");
                         }
                         else
-                            return Unavailable();
+                            return Forbidden("auth_token_refresh_token", "REFRESH_TOKEN_INVALID", "Invalid specified refresh token");
                     }
                     else
-                        return Forbidden("grant_refresh_token", "expired");
+                        return Forbidden("auth_token_refresh_token", "REFRESH_TOKEN_INVALID", "Invalid specified refresh token");
                 }
                 else
-                    return Forbidden("grant_refresh_token", "failure");
+                    return Forbidden("auth_token_refresh_token", "REFRESH_TOKEN_INVALID", "Invalid specified refresh token");
             }
             else
-                return BadRequest("grant", "type is not supported");
+                return BadRequest("auth_token_", "GRANT_TYPE_INVALID", "type is not supported");
         }
-                
-        private bool TokenAuthClient(string base64ClientId, string base64ClientSecret, out Guid? clientId, out Result<AuthTokenResponse> result)
+
+#if DEBUG
+        [Get("/getsecret")]
+        [Sql]
+        [NoAuth]
+        public Method<string> GetSecret(string guid)
+        {
+            var d = Sql.Select("cl_secret").From("client").Where("cl_id", guid);
+
+            if (d.Execute(out SqlRow row))
+            {
+                return Base64.UrlEncode(row[0].GetByteArray());
+            }
+            else
+                return NotFound();
+        }
+#endif
+
+        private bool TokenAuthClient(string source, string base64ClientId, string base64ClientSecret, out Guid? clientId, out Method<AuthTokenResponse> result)
         {
             clientId = null;
             result = null;
@@ -201,15 +230,21 @@ namespace Aveezo
             var ret = false;
             var auth = Service<IAuthService>();
 
-            if (Base64.TryUrlGuidDecode(base64ClientId, out clientId) && Base64.TryUrlDecode(base64ClientSecret, out var clientSecret))
+            if (Base64.TryUrlGuidDecode(base64ClientId, out clientId) && Base64.TryUrlDecode(base64ClientSecret, out string clientSecret))
             {
                 if (auth.AuthenticateClient(clientId.Value, clientSecret))
+                {
+                    clientId = clientId.Value;
                     ret = true;
+                }
                 else
-                    result = Forbidden("auth_client", "authentication_failure");
+                    result = Forbidden(source, "AUTH_FAILURE", "authentication_failure");
             }
             else
-                result = BadRequest("auth_client", "clientId or clientSecret is not in correct format");
+            {
+                result = BadRequest(source, "AUTH_BAD_REQUEST", $"[{nameof(clientId)}] or [{nameof(clientSecret)}] is not in correct format");
+            }
+                
 
             return ret;
         }
@@ -232,8 +267,10 @@ namespace Aveezo
         [RequiredIf("GrantType", "client_credentials")]
         public string ClientSecret { get; set; }
 
-        [Base64, RequiredIf("GrantType", "refresh_token")]
+        [RequiredIf("GrantType", "refresh_token")]
         public string RefreshToken { get; set; }
+
+        public string Parameters { get; set; }
     }
 
     public class AuthTokenResponse

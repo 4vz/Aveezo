@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -45,7 +45,7 @@ namespace Aveezo
                             {
                                 //referencedSchema.Description = null;
 
-                                if (operation.Tags.Has(typeof(PagingTag)))
+                                if (operation.Tags.Has(typeof(PagingTag)) && /*workaround*/referencedSchema.AdditionalProperties != null)
                                 {
                                     referencedSchema.Type = "object";
 
@@ -166,7 +166,7 @@ namespace Aveezo
             {
                 // classes
 
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Result<>))
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Method<>))
                 {
                     type = type.GetGenericArguments()[0];
 
@@ -175,7 +175,7 @@ namespace Aveezo
                         schema.Description = "aveezo:result_array";
                         schema.Type = "array";
                         schema.Items = context.SchemaGenerator.GenerateSchema(type.GetElementType(), context.SchemaRepository);
-                        schema.AdditionalProperties = context.SchemaGenerator.GenerateSchema(typeof(IPagingResult), context.SchemaRepository);
+                        schema.AdditionalProperties = context.SchemaGenerator.GenerateSchema(typeof(IMethodResult), context.SchemaRepository);
                         schema.AdditionalPropertiesAllowed = true;
 
 
@@ -213,7 +213,7 @@ namespace Aveezo
                         schema.Reference = newSchema.Reference;
                     }
                 }
-                else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Filter<>))
+                else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(PropFilter<>))
                 {
                     type = type.GetGenericArguments()[0];
 
@@ -361,7 +361,7 @@ namespace Aveezo
         {
             if (context.MethodInfo.Has<DisabledAttribute>())
                 operation.Tags.Add(new DisabledTag());
-            else if (context.MethodInfo.Has<PagingAttribute>())
+            else if (ApiParameters.IsPagingResult(context.MethodInfo, out _))
                 operation.Tags.Add(new PagingTag());
 
             foreach (var parameter in operation.Parameters)

@@ -1,7 +1,7 @@
 ﻿using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -101,7 +101,7 @@ namespace Aveezo
 
         public static string UrlDecode(string str) => Decode(str, true);
 
-        private static bool TryDecode(string str, bool? urlEncoded, out string decoded)
+        private static bool TryDecode(string str, bool? urlEncoded, out byte[] decoded)
         {
             decoded = null;
 
@@ -114,9 +114,9 @@ namespace Aveezo
             {
                 if (urlEncoded != null && isUrl != null && urlEncoded.Value != isUrl.Value) { }
                 else if (isUrl == null || isUrl == true)
-                    decoded = Decode(str, true);
+                    decoded = DecodeToBytes(str, true);
                 else
-                    decoded = Decode(str, false);
+                    decoded = DecodeToBytes(str, false);
 
                 ret = true;
             }
@@ -124,11 +124,29 @@ namespace Aveezo
             return ret;
         }
 
+        private static bool TryDecode(string str, bool? urlEncoded, out string decoded)
+        {
+            decoded = null;
+
+            if (TryDecode(str, urlEncoded, out byte[] decodedBytes))
+            {
+                decoded = decodedBytes.ToUTF8String();
+                return true;
+            }
+            else
+                return false;
+        }
+
+        public static bool TryDecode(string str, out byte[] decoded) => TryDecode(str, null, out decoded);
+
+        public static bool TryUrlDecode(string str, out byte[] decoded) => TryDecode(str, true, out decoded);
+
         public static bool TryDecode(string str, out string decoded) => TryDecode(str, null, out decoded);
 
         public static bool TryUrlDecode(string str, out string decoded) => TryDecode(str, true, out decoded);
 
         public static bool TryUrlDecode(string str, out string decoded, StringChecks decodedChecks) => TryDecode(str, true, out decoded) && decoded.Is(decodedChecks);
+
 
         // GUID
 

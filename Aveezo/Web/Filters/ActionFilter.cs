@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace Aveezo
 {
@@ -37,68 +38,80 @@ namespace Aveezo
 
         public void OnActionExecuting(ActionExecutingContext context)
         {
-            // check 
-            if (context.Result == null && !context.ModelState.IsValid)
+            var action = context.ActionDescriptor as ControllerActionDescriptor;
+
+            if (context.Result == null)
             {
-                int statusCode = 400; // by default it is 400 bad request
-
-                Type modelTypeForJsonNaming = null;
-
-                if (!context.HttpContext.IsSoapXml())
+                // Invalid Model State error result
+                if (context.ModelState.IsValid == false)
                 {
-                    var pars = context.ActionDescriptor.Parameters;
-
-                    if (pars.Count > 0)
+                    if (context.ModelState.ContainsKey("unavailable"))
                     {
-                        modelTypeForJsonNaming = pars[0].ParameterType;
+                        string message = null;
+
+                        if (context.ModelState["unavailable"].Errors.Count > 0)
+                        {
+                            message = context.ModelState["unavailable"].Errors[0].ErrorMessage;
+                        }
+
+                        context.Result = Api.Unavailable(message);
+
                     }
-                }
-
-                var entries = new List<ErrorResultEntry>();
-
-                foreach ((var key, var value) in context.ModelState)
-                {
-                    if (value.Errors.Count > 0)
+                    else
                     {
-                        string rkey = null;
+                        var statusCode = 400; // by default it is 400 bad request
+                        var details = new Dictionary<string, string[]>();
 
-                        if (key.StartsWith("$."))
+                        Type modelTypeForJsonNaming = null;
+
+                        if (!context.HttpContext.IsSoapXml())
                         {
-                            rkey = key.Substring(2);
+                            var pars = context.ActionDescriptor.Parameters;
+                            if (pars.Count > 0)
+                                modelTypeForJsonNaming = pars[0].ParameterType;
                         }
-                        else if (modelTypeForJsonNaming != null && modelTypeForJsonNaming.GetMember(key).Has<JsonPropertyNameAttribute>(out var tdd))
+
+                        foreach ((var key, var value) in context.ModelState)
                         {
-                            rkey = tdd.Name;
-                        }
-
-                        var list = new List<string>();
-
-                        foreach (var error in value.Errors)
-                        {
-                            var message = error.ErrorMessage;
-
-                            if (message != null && message.Length > 3 && message.StartsWith("###"))
+                            if (value.Errors.Count > 0)
                             {
-                                statusCode = 503;
-                                message = message.Substring(3);
-                            }
+                                string rkey = null;
 
-                            if (rkey != null)
-                                list.Add(message.Replace(key, rkey));
-                            else
-                                list.Add(message);
+                                if (key.StartsWith("$."))
+                                {
+                                    rkey = key[2..];
+                                }
+                                else if (modelTypeForJsonNaming != null)
+                                {
+                                    if (modelTypeForJsonNaming.GetMember(key).Has<JsonPropertyNameAttribute>(out var tdd))
+                                        rkey = tdd[0].Name;
+                                    else
+                                        rkey = key.ToSnakeCase();
+                                }
+
+                                var detailStatuses = new List<string>();
+                                var detailMessages = new List<string>();
+
+                                foreach (var error in value.Errors)
+                                {
+                                    detailMessages.Add(rkey != null ? error.ErrorMessage.Replace(key, rkey).Trim() : error.ErrorMessage.Trim());
+                                }
+
+                                details.Add(rkey ?? key, detailMessages.ToArray());
+                            }
                         }
 
-                        entries.Add(new ErrorResultEntry { Source = rkey ?? key, Errors = list.ToArray() });
+                        var errorResult = new ErrorResult(statusCode, "request_validation", "VALIDATIONS_FAILED", "one or more validations have been failed");
+                        errorResult.Error.Details = details;
+                        context.Result = new ObjectResult(errorResult) { StatusCode = statusCode };
                     }
                 }
-
-                context.Result = new ObjectResult(new ErrorResult { Entries = entries.ToArray() }) { StatusCode = statusCode };
             }
         }
 
         public void OnActionExecuted(ActionExecutedContext context)
         {
+            
         }
 
         #endregion

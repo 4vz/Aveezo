@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -57,7 +57,7 @@ namespace Aveezo
             return list;
         }
 
-        public static IEnumerable<T> Combine<T>(this IEnumerable<T> value, IEnumerable<T> comb)
+        public static IEnumerable<T> Append<T>(this IEnumerable<T> value, IEnumerable<T> comb)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             if (comb is null) throw new ArgumentNullException(nameof(comb));
@@ -68,7 +68,7 @@ namespace Aveezo
             return list;
         }
 
-        public static IEnumerable<T> Combine<T>(this IEnumerable<T> value, T comb)
+        public static IEnumerable<T> Append<T>(this IEnumerable<T> value, T comb)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             if (comb is null) throw new ArgumentNullException(nameof(comb));
@@ -81,7 +81,30 @@ namespace Aveezo
 
         public static T[] ToArray<T>(this IEnumerable<T> value) => value.ToList().ToArray();
 
+        public static TResult[] ToArray<T, TResult>(this IEnumerable<T> value, Func<T, TResult> func) => value.ToList(func).ToArray();
+
         public static List<T> ToList<T>(this IEnumerable<T> value) => new(value);
+
+        public static List<TResult> ToList<T, TResult>(this IEnumerable<T> value, Func<T, TResult> func)
+        {
+            var list = new List<TResult>();
+
+            foreach (var item in value)
+                list.Add(func(item));
+
+            return list;
+        }
+
+        public static IEnumerator<T> GetEnumerator<T>(this IEnumerable<T> value) => value.GetEnumerator();
+
+        public static IEnumerable<T> ForEachFormat<T>(this IEnumerable<T> value, Func<T, T> func)
+        {
+            if (func == null) throw new ArgumentNullException(nameof(func));
+            
+            List<T> n = new();
+            foreach (var v in value) n.Add(func(v));
+            return n;
+        }
     }
 } 
 

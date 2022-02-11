@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
@@ -34,10 +34,10 @@ namespace Aveezo
                 if (values.IndexOf(str) > -1)
                     return ValidationResult.Success;
                 else
-                    return new ValidationResult($"The {context.MemberName} field is not in StringRange attribute.");
+                    return new ValidationResult($"Not in [StringRange] attribute.");
             }
             else
-                return new ValidationResult($"The {context.MemberName} field is not a string.");
+                return new ValidationResult($"Not a string");
         }
 
 

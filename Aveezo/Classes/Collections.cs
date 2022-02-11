@@ -51,9 +51,9 @@ namespace Aveezo
                 return null;
         }
 
-        public static Dictionary<string, string> CreateDictionary(string value, char[] entriesSeparator, char[] keyValueSeparator) => CreateDictionary(value, entriesSeparator, keyValueSeparator, StringOptions.None, StringOptions.None);
+        public static Dictionary<string, string> CreateDictionary(string value, char[] entriesSeparator, char[] keyValueSeparator) => CreateDictionary(value, entriesSeparator, keyValueSeparator, StringConvertOptions.None, StringConvertOptions.None);
 
-        public static Dictionary<string, string> CreateDictionary(string value, char[] entriesSeparator, char[] keyValueSeparator, StringOptions keyOptions, StringOptions valueOptions)
+        public static Dictionary<string, string> CreateDictionary(string value, char[] entriesSeparator, char[] keyValueSeparator, StringConvertOptions keyOptions, StringConvertOptions valueOptions)
         {
             if (value != null)
             {

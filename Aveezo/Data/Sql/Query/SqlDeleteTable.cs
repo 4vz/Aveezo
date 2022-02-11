@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Aveezo
 {
-    public sealed class SqlDeleteTable : SqlManipulationBase
+    public sealed class SqlDeleteTable : SqlExecuteBase
     {
         #region Fields
 
@@ -16,7 +16,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlDeleteTable(string table, Sql database, string whereColumn) : base(table, database, SqlQueryType.Execute)
+        internal SqlDeleteTable(Sql database, SqlTable table, string whereColumn) : base(database, table, SqlQueryType.Execute)
         {
             WhereColumn = whereColumn;
 
@@ -42,7 +42,7 @@ namespace Aveezo
             return this;
         }
 
-        protected override string[] GetStatements() => Database.Connection.DeleteTable(Table, WhereColumn, entries.ToArray(), OutputResult);
+        protected override string[] GetStatements(Values<string> _) => Database.Connection.DeleteTable(Table, WhereColumn, entries.ToArray(), OutputResult);
 
         #endregion
     }

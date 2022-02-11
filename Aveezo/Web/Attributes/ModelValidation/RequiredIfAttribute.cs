@@ -2,14 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
+
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Aveezo
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = true, Inherited = true)]
-    public class RequiredIfAttribute : ValidationAttribute
+    public class RequiredIfAttribute : RequiredAttribute
     {
         #region Fields
 
@@ -56,11 +56,8 @@ namespace Aveezo
 
             if (required)
             {
-                //var httpContextAccessor = (IHttpContextAccessor)validationContext.GetService(typeof(IHttpContextAccessor));
-                //var httpContext = httpContextAccessor.HttpContext;
-
                 if (value == null)
-                    return new ValidationResult($"The {context.MemberName} field is required.");
+                    return new ValidationResult(ErrorMessage);
             }
 
             return ValidationResult.Success;
