@@ -166,7 +166,7 @@ namespace Aveezo
             {
                 // classes
 
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Method<>))
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Result<>))
                 {
                     type = type.GetGenericArguments()[0];
 
@@ -175,7 +175,7 @@ namespace Aveezo
                         schema.Description = "aveezo:result_array";
                         schema.Type = "array";
                         schema.Items = context.SchemaGenerator.GenerateSchema(type.GetElementType(), context.SchemaRepository);
-                        schema.AdditionalProperties = context.SchemaGenerator.GenerateSchema(typeof(IMethodResult), context.SchemaRepository);
+                        schema.AdditionalProperties = context.SchemaGenerator.GenerateSchema(typeof(IPagingResult), context.SchemaRepository);
                         schema.AdditionalPropertiesAllowed = true;
 
 

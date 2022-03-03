@@ -9,6 +9,11 @@ namespace Aveezo
 {
     public class NamingPolicy : JsonNamingPolicy
     {
-        public override string ConvertName(string name) => name.ToSnakeCase();
+        public override string ConvertName(string name)
+        {
+            return name.ToSnakeCase();
+
+        }
     }
 }
+

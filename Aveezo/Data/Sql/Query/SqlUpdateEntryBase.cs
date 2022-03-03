@@ -17,7 +17,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdateEntryBase(Sql database, SqlTable table) : base(database, table, SqlQueryType.Execute)
+        internal SqlUpdateEntryBase(Sql database, SqlTable table) : base(database, table, SqlExecuteType.Execute)
         {
             Update = new SqlUpdateSets();
         }

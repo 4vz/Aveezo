@@ -16,7 +16,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlInsertTable(Sql database, SqlTable table, string[] columns) : base(database, table, SqlQueryType.Execute)
+        internal SqlInsertTable(Sql database, SqlTable table, string[] columns) : base(database, table, SqlExecuteType.Execute)
         {
             this.columns = columns;
         }

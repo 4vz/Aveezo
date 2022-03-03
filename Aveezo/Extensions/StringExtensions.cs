@@ -29,14 +29,22 @@ namespace Aveezo
 
             foreach (var c in value)
             {
-                if (char.IsLower(c))
+                // IF UPPERCASE
+                if (char.IsUpper(c))
                 {
-                    if (wordBuilder.Length > 0 && char.IsDigit(wordBuilder[^1]))
+                    // buat baru jika sebelumnya bukan upper
+                    if (wordBuilder.Length > 0 && !char.IsUpper(wordBuilder[^1]))
                     {
                         words.Add(wordBuilder.ToString());
                         wordBuilder.Clear();
                     }
-                    else if (wordBuilder.Length > 1 && char.IsUpper(wordBuilder[^1]))
+                    wordBuilder.Append(c);
+                }
+                // IF LOWERCASE
+                else if (char.IsLower(c))
+                {
+                    // jika sebelumnya upper dan lebih dari 1, maka buat baru + satu karakter dari sebelumnya
+                    if (wordBuilder.Length > 1 && char.IsUpper(wordBuilder[^1]))
                     {
                         var moveChar = wordBuilder[^1];
                         wordBuilder.Remove(wordBuilder.Length - 1, 1);
@@ -44,25 +52,23 @@ namespace Aveezo
                         wordBuilder.Clear();
                         wordBuilder.Append(moveChar);
                     }
-                    wordBuilder.Append(c);
-                }
-                else if (char.IsUpper(c) || char.IsDigit(c))
-                {
-                    if (wordBuilder.Length > 0 && ((char.IsUpper(c) && !char.IsUpper(wordBuilder[^1])) || (char.IsDigit(c) && !char.IsDigit(wordBuilder[^1]))))
+                    else if (wordBuilder.Length > 0 && wordBuilder.ToString().IsDigit())
                     {
                         words.Add(wordBuilder.ToString());
                         wordBuilder.Clear();
                     }
                     wordBuilder.Append(c);
                 }
-                else if (wordBuilder.Length > 0)
+                // IF DIGIT
+                else if (char.IsDigit(c))
+                {
+                    wordBuilder.Append(c);
+                }
+                // IF SPACE/UNDERSCORE
+                else if (wordBuilder.Length > 0 && (c == '_' || c == '-'))
                 {
                     words.Add(wordBuilder.ToString());
                     wordBuilder.Clear();
-                }
-                else if (c == '_')
-                {
-                    words.Add("");
                 }
             }
 
@@ -493,7 +499,37 @@ namespace Aveezo
                 action(gcc.Value);
             }
         }
-     
+
+        public static bool IsDigit(this string value)
+        {
+            if (value == null) throw new ArgumentNullException(nameof(value));
+
+            foreach (char c in value)
+            {
+                if (!char.IsDigit(c))
+                    return false;
+            }
+
+            return true;
+        }     
+
+        public static bool IsUpper(this string value)
+        {
+            if (value == null) throw new ArgumentNullException(nameof(value));
+
+            foreach (char c in value)
+            {
+                if (!char.IsUpper(c))
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
+    public static class StringBuilderExtensions
+    {
+
     }
 
     [Flags]

@@ -17,7 +17,7 @@ namespace Aveezo
 
         public string Sql { get; }
 
-        internal SqlQueryType Type { get; }
+        internal SqlExecuteType Type { get; }
 
         public bool ExecuteOutput { get; internal set; } = false;
 
@@ -35,7 +35,7 @@ namespace Aveezo
 
         internal Dictionary<string, int> ColumnIndex { get; init; } = null;
 
-        public SqlRow First => (Type == SqlQueryType.Reader || Type == SqlQueryType.Scalar) && Count > 0 ? this[0] : null;
+        public SqlRow First => (Type == SqlExecuteType.Reader || Type == SqlExecuteType.Scalar) && Count > 0 ? this[0] : null;
 
         public SqlRow this[int index] => rows == null ? null : index >= 0 && index < Count ? rows[index] : null;
 
@@ -50,12 +50,12 @@ namespace Aveezo
 
         #region Constructor
 
-        internal SqlResult(string sql, SqlQueryType type)
+        internal SqlResult(string sql, SqlExecuteType type)
         {
             Sql = sql;
             Type = type;
 
-            if (type == SqlQueryType.Reader || type == SqlQueryType.Scalar)
+            if (type == SqlExecuteType.Reader || type == SqlExecuteType.Scalar)
                 rows = new List<SqlRow>();
             else
                 emptyRows = new List<SqlRow>();
@@ -106,7 +106,7 @@ namespace Aveezo
 
         public List<SqlRow> ToList()
         {
-            if (Type == SqlQueryType.Reader)
+            if (Type == SqlExecuteType.Reader)
             {
                 var list = new List<SqlRow>();
 
@@ -217,7 +217,7 @@ namespace Aveezo
 
         public Dictionary<T, SqlRow> ToDictionary<T>(KeyCallback<T> key, KeyDuplicateEventHandler<T> duplicate)
         {
-            if (Type == SqlQueryType.Reader)
+            if (Type == SqlExecuteType.Reader)
             {
                 if (key != null)
                 {
@@ -251,7 +251,7 @@ namespace Aveezo
 
         public Dictionary<T, SqlRow> ToDictionary<T>(string columnNameAsKey, KeyDuplicateEventHandler<T> duplicate)
         {
-            if (Type == SqlQueryType.Reader)
+            if (Type == SqlExecuteType.Reader)
             {
                 if (ColumnNames != null)
                 {
@@ -317,7 +317,7 @@ namespace Aveezo
 
             if (limit < 2) return print.ToArray();
 
-            if (Type == SqlQueryType.Reader)
+            if (Type == SqlExecuteType.Reader)
             {
                 if (limit >= 7)
                 {
@@ -414,7 +414,7 @@ namespace Aveezo
                     }
                 }
             }
-            else if (Type == SqlQueryType.Scalar)
+            else if (Type == SqlExecuteType.Scalar)
             {
                 var cell = First.First;
                 var length = cell.ToString().Length;

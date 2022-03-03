@@ -105,7 +105,7 @@ WHERE
     Col.Constraint_Name = Tab.Constraint_Name
     AND Col.Table_Name = Tab.Table_Name
     AND Constraint_Type = 'PRIMARY KEY'
-    AND Col.Table_Name = '{table.Name}'", result, SqlQueryType.Reader, out _, 10000);
+    AND Col.Table_Name = '{table.Name}'", result, SqlExecuteType.Reader, out _, 10000);
 
 
             if (result)

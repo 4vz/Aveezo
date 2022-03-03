@@ -14,7 +14,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlExecuteBase(Sql database, SqlTable table, SqlQueryType type) : base(database, table, type)
+        internal SqlExecuteBase(Sql database, SqlTable table, SqlExecuteType type) : base(database, table, type)
         {
         }
 

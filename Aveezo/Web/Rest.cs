@@ -26,6 +26,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Utf8Json;
 using Utf8Json.Resolvers;
+using Utf8Json.AspNetCoreMvcFormatter;
 
 namespace Aveezo;
 
@@ -124,6 +125,8 @@ public abstract class Rest : App
 
         });
 
+
+
         mvcBuilder.ConfigureApiBehaviorOptions(options =>
         {
             options.SuppressModelStateInvalidFilter = true;
@@ -132,16 +135,18 @@ public abstract class Rest : App
         // DataAnnotations for API
         mvcBuilder.AddDataAnnotations();
 
+        // system.text.json options
         mvcBuilder.AddJsonOptions(options =>
         {
-
             options.JsonSerializerOptions.Converters.Add(new TimeSpanJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new BitArrayJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new PhysicalAddressJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new IPAddressCidrJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new IPAddressJsonConverter());
 
-            options.JsonSerializerOptions.PropertyNamingPolicy = new NamingPolicy();
+            var namingPolicy = new NamingPolicy();
+
+            options.JsonSerializerOptions.PropertyNamingPolicy = namingPolicy;
             options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         });
 
@@ -151,7 +156,6 @@ public abstract class Rest : App
         }
 
         services.AddApiVersioning(options =>
-
         {
             options.DefaultApiVersion = new ApiVersion(1, 0);
             options.Conventions.Add(new VersionNamespaceConvention(apiOptions.ControllerGroupNamespacePrefix));

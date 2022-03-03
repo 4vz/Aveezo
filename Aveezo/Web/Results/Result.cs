@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Aveezo
 {
-    public class Method<T> : IConvertToActionResult
+    public class Result<T> : IConvertToActionResult
     {
         #region Fields
 
@@ -19,24 +19,24 @@ namespace Aveezo
 
         #region Constructors
 
-        protected Method(IActionResult result) => ActionResult = result;
+        protected Result(IActionResult result) => ActionResult = result;
 
         #endregion
 
         #region Operators
 
-        public static implicit operator Method<T>(T result) => new(new ObjectResult(result));
+        public static implicit operator Result<T>(T result) => new(new ObjectResult(result));
 
-        public static implicit operator Method<T>(MethodResult<T> result) => new(new ObjectResult(result));
+        public static implicit operator Result<T>(PagingResult<T> result) => new(new ObjectResult(result));
 
         // return Result<T[]> dari Query
-        public static implicit operator Method<T>(Method<T[]> resultArray)
+        public static implicit operator Result<T>(Result<T[]> resultArray)
         {
             if (resultArray.ActionResult is ObjectResult ores)
             {
                 if (ores.Value is T[] tarray)
                     return tarray[0];
-                else if (ores.Value is MethodResult<T> tpaging)
+                else if (ores.Value is PagingResult<T> tpaging)
                     return tpaging;
             }
             else if (resultArray.ActionResult is StatusCodeResult scres)
@@ -45,11 +45,11 @@ namespace Aveezo
             return new StatusCodeResult(503);
         }
 
-        public static implicit operator Method<T>(ActionResult result) => new(result);
+        public static implicit operator Result<T>(ActionResult result) => new(result);
 
-        public static implicit operator Method<T>(ObjectResult result) => new(result);
+        public static implicit operator Result<T>(ObjectResult result) => new(result);
 
-        public static implicit operator Method<T>(StatusCodeResult result) => new(result);
+        public static implicit operator Result<T>(StatusCodeResult result) => new(result);
 
         #endregion
 

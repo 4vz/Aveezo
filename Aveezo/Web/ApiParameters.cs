@@ -19,6 +19,12 @@ namespace Aveezo
 
         public bool IsPaging { get; init; } = false;
 
+        public bool Total { get; init; } = false;
+
+        public Dictionary<string, PropertyInfo> Properties { get; init; } = null;
+
+        public Dictionary<string, FieldOptions> FieldOptions { get; init; } = null;
+
         public int Limit { get; init; } = 0;
 
         public int Offset { get; init; } = -1;
@@ -40,7 +46,7 @@ namespace Aveezo
         public static bool IsPagingResult(MethodInfo methodInfo, out Type arrayType)
         {
             arrayType = null;
-            if (methodInfo != null && !methodInfo.Has<NoPagingAttribute>() && methodInfo.ReturnType != null && methodInfo.ReturnType.IsAssignableToGenericType(typeof(Method<>), out Type[] rtype) && rtype[0].IsArray)
+            if (methodInfo != null && !methodInfo.Has<NoPagingAttribute>() && methodInfo.ReturnType != null && methodInfo.ReturnType.IsAssignableToGenericType(typeof(Result<>), out Type[] rtype) && rtype[0].IsArray)
             {
                 arrayType = rtype[0];
                 return true;

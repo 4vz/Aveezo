@@ -61,7 +61,7 @@ namespace Aveezo
             Query(@$"
 SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
 WHERE i.indrelid = '{table.Name}'::regclass AND i.indisprimary;
-", result, SqlQueryType.Reader, out _, 10000);
+", result, SqlExecuteType.Reader, out _, 10000);
 
             if (result)
             {

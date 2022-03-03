@@ -16,7 +16,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlDeleteTable(Sql database, SqlTable table, string whereColumn) : base(database, table, SqlQueryType.Execute)
+        internal SqlDeleteTable(Sql database, SqlTable table, string whereColumn) : base(database, table, SqlExecuteType.Execute)
         {
             WhereColumn = whereColumn;
 

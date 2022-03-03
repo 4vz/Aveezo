@@ -144,10 +144,7 @@ namespace Aveezo
                 return new[] { "No Result" };
         }
 
-        public T[] Builder<T>(
-            Action<SqlItemBuilder<T>> itemBuilder,
-            Action<SqlPropertyBuilder<T>> propertyBuilder
-            )
+        public T[] Builder<T>(Action<SqlPropertyBuilder<T>> propertyBuilder, Action<SqlItemBuilder<T>> itemBuilder)
         {
             if (Ok && selectBuilders != null && select != null)
             {
@@ -159,24 +156,60 @@ namespace Aveezo
                     T item = (T)Activator.CreateInstance(typeof(T));
                     Context context = new();
 
-                    List<SqlBuilder> builders = new();
+                    Dictionary<string, SqlCell> rowdict = new();
+                    foreach (var (name, index) in result.ColumnIndex) rowdict.Add(name, row[index]);
 
-                    // invoke item property setter
+                    List<SqlBuilder> builders = new();
+                    Dictionary<string, object> formattedValues = new();
+
+                    // get builders
                     foreach (var columnName in result.ColumnNames)
                     {
                         if (columnName != "___select")
                         {
                             var builder = select.GetBuilder(columnName, row);
 
-                            if (builder != null)
-                            {
-                                builder.Get?.Invoke(item, builder.GetCell(row), row);
+                            if (builder != null && builder.Name != null)
                                 builders.Add(builder);
-                            }
                         }
                     }
 
-                    // invoke propertyBuilder for each property
+                    // formatter
+                    foreach (var builder in builders)
+                    {
+                        var cell = row.ContainsKey(builder.Name) ? row[builder.Name] : null;
+                        object formattedValue = null;
+
+                        if (builder.Formatter != null)
+                        {
+                            formattedValue = builder.Formatter(rowdict);
+
+                            if (formattedValue is SqlCell valueCell)
+                                formattedValue = valueCell.GetObject();
+                        }
+                        else if (cell != null)
+                        {
+                            // default formatter
+                            formattedValue = cell.GetObject();
+                        }
+
+                        formattedValues.Add(builder.Name, formattedValue);
+                    }
+
+                    // binder
+                    foreach (var builder in builders)
+                    {
+                        if (builder.Binder != null)
+                        {
+                            builder.Binder(item, rowdict, formattedValues);
+                        }
+                        else
+                        {
+                            // default binder
+                        }
+                    }
+
+                    // propertyBuilder
                     if (propertyBuilder != null)
                     {
                         foreach (var builder in builders)
@@ -185,19 +218,20 @@ namespace Aveezo
                             {
                                 Item = item,
                                 Context = context,
-                                Cell = builder.GetCell(row),
-                                Builder = builder
+                                Builder = builder,
+                                Values = rowdict,
+                                FormattedValues = formattedValues
                             });
                         }
                     }
-
+                    
                     // invoke itemBuilder
                     itemBuilder?.Invoke(new SqlItemBuilder<T>
                     {
-                        Item = item,
                         Context = context,
-                        Select = select,
-                        Row = row
+                        Item = item,
+                        Values = rowdict,
+                        FormattedValues = formattedValues
                     });
 
                     list.Add(item);
@@ -218,9 +252,9 @@ namespace Aveezo
 
         public Context Context { get; init; }
 
-        public SqlSelect Select { get; init; }
+        public Dictionary<string, SqlCell> Values { get; init; }
 
-        public SqlRow Row { get; init; }
+        public Dictionary<string, object> FormattedValues { get; init; }
     }
 
     public sealed class SqlPropertyBuilder<T>
@@ -229,8 +263,14 @@ namespace Aveezo
 
         public Context Context { get; init; }
 
-        public SqlCell Cell { get; init; }
-
         public SqlBuilder Builder { get; init; }
+
+        public Dictionary<string, SqlCell> Values { get; init; }        
+        
+        public Dictionary<string, object> FormattedValues { get; init; }
+
+        public SqlCell Value => Builder.Name != null ? Values.ContainsKey(Builder.Name) ? Values[Builder.Name] : null : null;
+
+        public object FormattedValue => Builder.Name != null ? Values.ContainsKey(Builder.Name) ? FormattedValues[Builder.Name] : null : null;
     }
 }

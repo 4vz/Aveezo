@@ -92,7 +92,7 @@ namespace Aveezo
 
         public void Apply(OpenApiSchema schema, SchemaFilterContext context)
         {
-            if (context.Type != null && context.Type.IsGenericType && context.Type.GetGenericTypeDefinition() == typeof(Method<>))
+            if (context.Type != null && context.Type.IsGenericType && context.Type.GetGenericTypeDefinition() == typeof(Result<>))
             {
                 //schema.Reference = context.SchemaGenerator.GenerateSchema(context.Type, context.SchemaRepository).Reference;
 

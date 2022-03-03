@@ -18,10 +18,20 @@ namespace Aveezo
 
         public static string Watch(Stopwatch stopwatch)
         {
-            var elapsed = stopwatch.Elapsed;
-            stopwatch.Restart();
-            return $"Watch-Stop: {elapsed.TotalMilliseconds} ms";
+            return Watch(stopwatch, 0);
         }
 
+        public static string Watch(Stopwatch stopwatch, double substract)
+        {
+            return Watch(stopwatch, substract, out _);
+        }
+
+        public static string Watch(Stopwatch stopwatch, double substract, out double totalMs)
+        {
+            totalMs = stopwatch.Elapsed.TotalMilliseconds;
+            var netMs = totalMs - substract;
+            stopwatch.Restart();
+            return $"Watch-Stop: {netMs} ms";
+        }
     }
 }

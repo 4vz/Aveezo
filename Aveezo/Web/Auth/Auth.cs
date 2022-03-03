@@ -20,7 +20,7 @@ namespace Aveezo
 
         [Get]
         [NoAuth]
-        public Method<AuthTokenResponse> Begin(
+        public Result<AuthTokenResponse> Begin(
             [Query("response_type"), Required] string responseType, 
             [Query("client_id")] string clientId,
             [Query("redirect_uri"), Required, Uri(UriProperties.IsAbsolute)] Uri redirectUri,
@@ -81,7 +81,7 @@ namespace Aveezo
         /// <returns></returns>
         [Post("/token"), NoCache]
         [NoAuth]
-        public Method<AuthTokenResponse> GetToken(
+        public Result<AuthTokenResponse> GetToken(
             [Body] AuthTokenRequest request
             )
         {
@@ -91,7 +91,7 @@ namespace Aveezo
 
             if (grantType == "client_credentials")
             {
-                if (TokenAuthClient("auth_token_client_credentials", request.ClientId, request.ClientSecret, out Guid? clientId, out Method<AuthTokenResponse> authClientResult))
+                if (TokenAuthClient("auth_token_client_credentials", request.ClientId, request.ClientSecret, out Guid? clientId, out Result<AuthTokenResponse> authClientResult))
                 {
                     if (auth.AuthenticateClientScope(clientId.Value, request.Scope, out Guid[] validScope))
                     {
@@ -209,7 +209,7 @@ namespace Aveezo
         [Get("/getsecret")]
         [Sql]
         [NoAuth]
-        public Method<string> GetSecret(string guid)
+        public Result<string> GetSecret(string guid)
         {
             var d = Sql.Select("cl_secret").From("client").Where("cl_id", guid);
 
@@ -222,7 +222,7 @@ namespace Aveezo
         }
 #endif
 
-        private bool TokenAuthClient(string source, string base64ClientId, string base64ClientSecret, out Guid? clientId, out Method<AuthTokenResponse> result)
+        private bool TokenAuthClient(string source, string base64ClientId, string base64ClientSecret, out Guid? clientId, out Result<AuthTokenResponse> result)
         {
             clientId = null;
             result = null;

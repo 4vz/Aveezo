@@ -14,7 +14,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlDelete(Sql database) : base(database, null, SqlQueryType.Execute)
+        internal SqlDelete(Sql database) : base(database, null, SqlExecuteType.Execute)
         {
             entries = new List<SqlDeleteEntry>();
         }
@@ -50,7 +50,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlDeleteEntry(Sql database, SqlTable table) : base(database, table, SqlQueryType.Execute)
+        internal SqlDeleteEntry(Sql database, SqlTable table) : base(database, table, SqlExecuteType.Execute)
         {
         }
 

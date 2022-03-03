@@ -8,7 +8,7 @@ namespace Aveezo
     {
         #region Fields
 
-        internal SqlQueryType Type { get; set; }
+        internal SqlExecuteType Type { get; set; }
 
         public SqlTable Table { get; internal set; } = null;
 
@@ -18,7 +18,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlQueryBase(Sql database, SqlTable table, SqlQueryType type) : base(database)
+        internal SqlQueryBase(Sql database, SqlTable table, SqlExecuteType type) : base(database)
         {
             Table = table;
             Type = type;
@@ -60,11 +60,11 @@ namespace Aveezo
 
                 SqlQuery currentResult = null;
 
-                if (Type == SqlQueryType.Reader || (this is SqlExecuteBase smb && (_ = smb.OutputResult)))
+                if (Type == SqlExecuteType.Reader || (this is SqlExecuteBase smb && (_ = smb.OutputResult)))
                 {
                     currentResult = Database.FormatedQuery(sql, 0, 0, null);
 
-                    if (Type != SqlQueryType.Reader)
+                    if (Type != SqlExecuteType.Reader)
                     {
                         foreach (var res in currentResult)
                         {
@@ -72,7 +72,7 @@ namespace Aveezo
                         }
                     }
                 }
-                else if (Type == SqlQueryType.Execute)
+                else if (Type == SqlExecuteType.Execute)
                 {
                     currentResult = Database.FormatedExecute(sql);
                 }

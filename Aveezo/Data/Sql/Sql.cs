@@ -13,7 +13,7 @@ using System.Threading;
 
 namespace Aveezo;
 
-internal enum SqlQueryType
+internal enum SqlExecuteType
 {
     Reader,
     Scalar,
@@ -23,6 +23,18 @@ internal enum SqlQueryType
 [ModelBinder(typeof(SqlBinder))]
 public sealed class Sql
 {
+    #region Consts
+
+    public const string Id = "___id";
+
+    public static readonly object Null = new DataObject("NULL");
+
+    public static readonly object NotNull = new DataObject("NOTNULL");
+
+    public static readonly object Cancel = new DataObject("CANCEL");
+
+    #endregion
+
     #region Fields
 
     public string Name { get; } = null;
@@ -192,7 +204,7 @@ public sealed class Sql
             executedsql = sql;
 
         stopwatch.Start();
-        Connection.Query(executedsql, query, SqlQueryType.Reader, out Exception exception, Timeout);
+        Connection.Query(executedsql, query, SqlExecuteType.Reader, out Exception exception, Timeout);
         stopwatch.Stop();
 
         ProcessException(sql, query, exception);
@@ -226,7 +238,7 @@ public sealed class Sql
         var stopwatch = new Stopwatch();
 
         stopwatch.Start();
-        Connection.Query(sql, result, SqlQueryType.Execute, out Exception exception, Timeout);
+        Connection.Query(sql, result, SqlExecuteType.Execute, out Exception exception, Timeout);
         stopwatch.Stop();
 
         ProcessException(sql, result, exception);
@@ -250,7 +262,7 @@ public sealed class Sql
         var fsql = Format(sql, args);
 
         stopwatch.Start();
-        Connection.Query(fsql, result, SqlQueryType.Scalar, out Exception exception, Timeout);
+        Connection.Query(fsql, result, SqlExecuteType.Scalar, out Exception exception, Timeout);
         stopwatch.Stop();
 
         ProcessException(fsql, result, exception);
@@ -279,14 +291,14 @@ public sealed class Sql
 
     public SqlSelect SelectFrom(SqlTable table) => Select().From(table);
 
-    public SqlSelect SelectBuilder<T>(SqlTable table, Action<SqlSelectBuilder<T>> add) where T : class
+    public SqlSelect SelectBuilder<T>(SqlTable table, Action<SqlBuilderAdd<T>> add) where T : class
     {
         var select = Select().From(table);
         select.Builder(add);
         return select;
     }
 
-    public SqlSelect SelectBuilder<T>(SqlTable table, SqlCondition condition, Action<SqlSelectBuilder<T>> add) where T : class
+    public SqlSelect SelectBuilder<T>(SqlTable table, SqlCondition condition, Action<SqlBuilderAdd<T>> add) where T : class
     {
         var select = Select().From(table).Where(condition);
         select.Builder(add);

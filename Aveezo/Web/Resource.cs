@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,16 +16,12 @@ public abstract class Resource
     /// <summary>
     /// Id in Base64-URL encoded.
     /// </summary>
+    [JsonPropertyOrder(-1)]
+    [Field(Sql.Id, FieldOptions.Always | FieldOptions.HideInFields)]
     public string Id { get; set; }
 
     [Hide]
     public Dictionary<string, ResourceLink> _Links { get; set; }
-
-    public static object Null { get; } = new DataObject("NULL");
-
-    public static object NotNull { get; } = new DataObject("NOTNULL");
-
-    public static object Cancel { get; } = new DataObject("CANCEL");
 
     #endregion
 

@@ -79,6 +79,18 @@ namespace Aveezo
             return list;
         }
 
+        public static IEnumerable<T> AppendUnique<T>(this IEnumerable<T> value, T comb)
+        {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            if (comb is null) throw new ArgumentNullException(nameof(comb));
+
+            var list = value.ToList();
+            if (!list.Contains(comb))
+                list.Add(comb);
+
+            return list;
+        }
+
         public static T[] ToArray<T>(this IEnumerable<T> value) => value.ToList().ToArray();
 
         public static TResult[] ToArray<T, TResult>(this IEnumerable<T> value, Func<T, TResult> func) => value.ToList(func).ToArray();

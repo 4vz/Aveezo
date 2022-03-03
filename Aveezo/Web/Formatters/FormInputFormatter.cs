@@ -24,7 +24,6 @@ namespace Aveezo
                 var properties = type.GetProperties();
                 object instance = null;
 
-
                 foreach (var property in properties)
                 {
                     var propertyName = property.Name;

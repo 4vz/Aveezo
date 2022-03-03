@@ -6,7 +6,9 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Aveezo
-{
+{ 
+
+
     public class SqlCondition
     {
         #region Fields

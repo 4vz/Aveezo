@@ -15,7 +15,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdate(Sql database) : base(database, null, SqlQueryType.Execute)
+        internal SqlUpdate(Sql database) : base(database, null, SqlExecuteType.Execute)
         {
             entries = new List<SqlUpdateEntry>();
         }

@@ -54,12 +54,6 @@ public abstract class Api : ControllerBase
     /// </summary>
     public ApiSelect Select { get; set; } = null;
 
-    public static object Null { get; } = new DataObject("NULL");
-
-    public static object NotNull { get; } = new DataObject("NOTNULL");
-
-    public static object Cancel { get; } = new DataObject("CANCEL");
-
     #endregion
 
     #region Constructors
@@ -83,7 +77,7 @@ public abstract class Api : ControllerBase
     }
 
     protected T Service<T>() => Provider.GetService<T>();
-
+       
     protected void Debug(string header, string data)
     {
 #if DEBUG
@@ -91,7 +85,7 @@ public abstract class Api : ControllerBase
 #endif
     }
 
-    protected Method<T[]> Query<T>(SqlSelect select, Action<ApiQueryOptions<T>> options, Func<SqlRow, T> create)
+    protected Result<T[]> Query<T>(SqlSelect select, Action<ApiQueryOptions<T>> options, Func<SqlRow, T> create)
     {
         if (select == null)
             return NotFound();
@@ -99,7 +93,8 @@ public abstract class Api : ControllerBase
         var opt = new ApiQueryOptions<T>();
         options?.Invoke(opt);
 
-        Values<string> selectBuilders = null;
+        Values<string> fields = null;
+        List<string> displayFields = null;
 
         if (create != null)
         {
@@ -107,115 +102,47 @@ public abstract class Api : ControllerBase
         }
         else
         {
-            selectBuilders = Parameters.Fields;
+            var idBuilderStack = select.GetBuilderStack(Sql.Id);
+
+            if (idBuilderStack == null)
+            {
+                return Unavailable($"Builder with the identifier key ({Sql.Id}) is not found in the current builders. Please review the select function for this method.");
+            }
+
+            fields = Parameters.Fields;
+            displayFields = new();
 
             if (Parameters.Queries != null && Parameters.Queries.Length > 0)
             {
-                foreach (var (name, queries) in Parameters.Queries)
+                Dictionary<string, (SqlQueryType, string)[]> queries = new();
+
+                foreach (var (a, b) in Parameters.Queries)
                 {
-                    var builderStack = select.GetBuilderStack(name);
+                    List<(SqlQueryType, string)> states = new();
 
-                    if (builderStack != null)
+                    foreach (var (c, d) in b)
                     {
-                        // set up column and modifiers
-
-                        SqlColumn builderColumn = null;
-                        SqlColumn column = null;
-                        Dictionary<string, Func<object, object>> modifiers = new();
-
-                        foreach (var (stackName, builder) in builderStack)
+                        var type = c switch
                         {
-                            if (builderColumn is null)
-                                builderColumn = builder.Column;
+                            "like" => SqlQueryType.Like,
+                            "notlike" => SqlQueryType.NotLike,
+                            "not" => SqlQueryType.NotEqual,
+                            "start" => SqlQueryType.StartsWith,
+                            "end" => SqlQueryType.EndsWith,
+                            "lt" =>  SqlQueryType.LessThan,
+                            "lte" => SqlQueryType.LessThanOrEqual,
+                            "gt" => SqlQueryType.GreaterThan,
+                            "gte" => SqlQueryType.GreaterThanOrEqual,
+                            _ => SqlQueryType.Equal,
+                        };
 
-                            if (builder.Query != null)
-                            {
-                                modifiers.Add(stackName, builder.Query);
-                            }
-                        }
-
-                        if (modifiers.Count == 0)
-                            modifiers.Add("___default", null);
-
-                        if (select.InnerSelect == null)
-                            column = builderColumn;
-                        else
-                            column = select.Table[name];
-
-                        // iterate through queries
-
-                        foreach (var (attribute, queryValue) in queries)
-                        {
-                            SqlCondition sumCondition = null;
-                            object value;
-
-
-                            foreach (var (modifierName, modifier) in modifiers)
-                            {
-                                if (modifier != null)
-                                    value = modifier(queryValue);
-                                else
-                                    value = queryValue;
-
-                                if (value is not null)
-                                {
-                                    SqlCondition newCondition = null;
-
-                                    if (value is DataObject obj)
-                                    {
-                                        if (obj.Data == "NULL")
-                                            newCondition = column == null;
-                                        else if (obj.Data == "NOTNULL")
-                                            newCondition = column != null;
-                                        else if (obj.Data == "CANCEL")
-                                            newCondition = new SqlCondition(false);
-                                    }
-                                    else
-                                    {
-                                        var isNumeric = value.IsNumeric();
-
-                                        if (attribute == null)
-                                            newCondition = column == value;
-                                        else if (attribute == "like")
-                                            newCondition = column % $"%{value}%";
-                                        else if (attribute == "start")
-                                            newCondition = column % $"{value}%";
-                                        else if (attribute == "end")
-                                            newCondition = column % $"%{value}";
-                                        else if (attribute == "notlike")
-                                            newCondition = column ^ $"%{value}%";
-                                        else if (attribute == "not")
-                                            newCondition = column != value;
-                                        else if (isNumeric && attribute == "lt")
-                                            newCondition = column < value;
-                                        else if (isNumeric && attribute == "gt")
-                                            newCondition = column > value;
-                                        else if (isNumeric && attribute == "lte")
-                                            newCondition = column <= value;
-                                        else if (isNumeric && attribute == "gte")
-                                            newCondition = column >= value;
-                                        else
-                                            newCondition = column == value;
-                                    }
-
-                                    if (modifierName != "___default")
-                                        newCondition = newCondition && select.Table["___select"] == modifierName;
-
-                                    if (sumCondition is null)
-                                        sumCondition = newCondition;
-                                    else
-                                        sumCondition = sumCondition || newCondition;
-                                }
-                            }
-
-                            select.WhereCondition = sumCondition && select.WhereCondition;
-
-                        }
-
-
-
+                        states.Add((type, d));
                     }
+
+                    queries.Add(a, states.ToArray());
                 }
+
+                select.BuilderQuery(queries);
             }
 
             if (Parameters.Sorts != null && Parameters.Sorts.Length > 0)
@@ -235,28 +162,44 @@ public abstract class Api : ControllerBase
             }
             else
             {
-                var builderStack = select.GetBuilderStackId();
-
-                if (builderStack != null)
+                if (idBuilderStack != null)
                 {
-                    var (_, builder) = builderStack.Get(0);
+                    var (_, builder) = idBuilderStack.Get(0);
                     var column = builder.Column;
                     select.Order = SqlOrder.By(column.Table == select.Table ? column : select.Table[builder.Name], Order.Ascending);
                 }
+            }
+
+            foreach (var (field, fieldOptions) in Parameters.FieldOptions)
+            {
+                if (!fieldOptions.HasFlag(FieldOptions.HideInFields))
+                    displayFields.Add(field);
             }
         }
 
         // pagination
         if (Parameters.IsPaging)
         {
-            if (Parameters.Limit > 0 && Parameters.Limit <= opt.MaximumLimit)
-                select.LimitLength = Parameters.Limit;
-            else if (Parameters.Limit < 1 && select.LimitLength == 0)
-                select.LimitLength = opt.DefaultLimit;
+            if (select.LimitLength == 0) 
+            {
+                if (Parameters.Limit > 0 && Parameters.Limit > opt.MaximumLimit)
+                    select.LimitLength = opt.MaximumLimit;
+                else if (Parameters.Limit < 0)
+                    select.LimitLength = 1;
+                else if (Parameters.Limit == 0)
+                    select.LimitLength = opt.MaximumLimit;
+                else
+                    select.LimitLength = Parameters.Limit;
+            }
+            else
+            {
+                if (select.LimitLength > opt.MaximumLimit)
+                    select.LimitLength = opt.MaximumLimit;
+            }
 
             if (Parameters.Offset > -1)
                 select.OffsetLength = Parameters.Offset;
-            else if (Parameters.Offset < 0 && select.OffsetLength < 0)
+            else
                 select.OffsetLength = 0;
         }
         else
@@ -265,105 +208,122 @@ public abstract class Api : ControllerBase
             select.OffsetLength = 0;
         }
 
-        var query = select.Execute(selectBuilders);
+        Dev.Watch(out var sw);
 
-        if (query.Ok)
+        var queryMain = select.Execute(Parameters.Fields);
+
+        if (queryMain.Ok)
         {
-            if (query.NoResult)
+            SqlResult resultMain = queryMain;
+
+            Debug("sql-main", resultMain.Sql);
+
+            if (queryMain.NoResult)
                 return NotFound();
             else
             {
-                SqlResult result = query;
-
-                Debug("sql", result.Sql);
-                Debug("sql-execution-time", $"{result.ExecutionTime.TotalMilliseconds} ms");
-
-                Dev.Watch(out var sw);
+                Debug("select-main-execute-net", Dev.Watch(sw, resultMain.ExecutionTime.TotalMilliseconds));
 
                 T[] items = null;
 
                 if (create != null)
                 {
-                    items = result.To(create);
+                    items = resultMain.To(create);
                 }
                 else
                 {
-                    items = query.Builder<T>(
-                        itemBuilder =>
+                    items = queryMain.Builder<T>(
+                        property =>
                         {
-                            var item = itemBuilder.Item;
-                            var context = itemBuilder.Context;
-                            var select = itemBuilder.Select;
-                            var row = itemBuilder.Row;
-                            var links = context["links"] as Dictionary<string, ResourceLink>;
+                            var name = property.Builder.Name;
 
-                            if (item is Resource resource)
-                            {
-                                if (links != null && links.Count > 0)
-                                    resource._Links = links;
-                            }
-                        },
-                        propertyBuilder =>
-                        {
-                            var item = propertyBuilder.Item;
-                            var context = propertyBuilder.Context;
-                            var name = propertyBuilder.Builder.Name;
-                            var options = propertyBuilder.Builder.Options;
-                            var cell = propertyBuilder.Cell;
-                            var ext = propertyBuilder.Builder.Ext;
-                            var links = context["links"] as Dictionary<string, ResourceLink>;
-
-                            if (links == null)
+                            if (property.Context["links"] is not Dictionary<string, ResourceLink> links)
                             {
                                 links = new Dictionary<string, ResourceLink>();
-                                context["links"] = links;
+                                property.Context["links"] = links;
                             }
 
-                            if (options == SqlBuilderOptions.Id)
+                            if (Parameters.Properties != null && Parameters.Properties.ContainsKey(name))
                             {
-                                name = "self";
-                                if (item is Resource resource && resource.Id == null)
+                                var propertyInfo = Parameters.Properties[name];
+                                var propertyValue = propertyInfo.GetValue(property.Item);
+                                if (propertyValue == null)
                                 {
-                                    resource.Id = Encode(cell);
+                                    object value = null;
+
+                                    if (Parameters.FieldOptions[name].HasFlag(FieldOptions.Encoded))
+                                        value = Encode(property.Value);
+                                    else
+                                        value = property.FormattedValue;
+
+                                    if (value != null)
+                                        propertyInfo.SetValue(property.Item, value);
                                 }
                             }
-                            if (ext?.Invoke(item) is string href)
-                            {
-                                links.Add(name, new ResourceLink { Href = href });
-                            }
-                        });
 
-                    Debug("result-loop", Dev.Watch(sw));
+                            if (property.Builder.Ext?.Invoke(property.Item) is string href)
+                            {
+                                links.Add(name == Sql.Id ? "self" : name, new ResourceLink { Href = href });
+                            }
+                        },
+                        item =>
+                        {
+                            if (item.Item is Resource resource)
+                            {
+                                if (item.Context["links"] is Dictionary<string, ResourceLink> links && links.Count > 0)
+                                    resource._Links = links;
+                            }
+                        }
+                    );
                 }
+
+                Debug("result-loop", Dev.Watch(sw));
+
+                Result<T[]> result = null;
+
+                Debug("sql-main-execution-time", $"{queryMain.ExecutionTime.TotalMilliseconds} ms");
 
                 if (Parameters.IsPaging)
                 {
-                    return new MethodResult<T[]>
+                    int? total = null;
+
+                    if (Parameters.Total)
+                    {
+                        total = select.ExecuteCount(Parameters.Fields, out var queryCount);
+                        Debug("sql-count-execution-time", $"{queryCount.ExecutionTime.TotalMilliseconds} ms");
+                        Debug("sql-count", ((SqlResult)queryCount).Sql);
+                    }
+
+                    result = new PagingResult<T[]>
                     {
                         Result = items,
-                        Total = select.ExecuteCount(selectBuilders),
+                        Total = total,
                         Count = items.Length,
                         Offset = select.OffsetLength,
-                        Fields = Parameters.Fields
+                        Fields = displayFields?.ToArray()
                     };
                 }
                 else
-                    return items;
+                    result = items;
+
+                
+
+                return result;
             }
         }
         else
         {
-            Debug("sql", query.Exception.Sql);
-            return Unavailable($"Query failed: {query.Exception.Exception?.Message}");
+            Debug("sql", queryMain.Exception.Sql);
+            return Unavailable($"Query failed: {queryMain.Exception.Exception?.Message}");
         }
     
     }
 
-    protected Method<T[]> Query<T>(SqlSelect select, Func<SqlRow, T> create) => Query(select, null, create);
+    protected Result<T[]> Query<T>(SqlSelect select, Func<SqlRow, T> create) => Query(select, null, create);
 
-    protected Method<T[]> Query<T>(SqlSelect select) => Query<T>(select, null, null);
+    protected Result<T[]> Query<T>(SqlSelect select) => Query<T>(select, null, null);
 
-    protected Method<T[]> Query<T>(Action<SqlSelect> init, Action<ApiQueryOptions<T>> options, params object[] parameters)
+    protected Result<T[]> Query<T>(Action<SqlSelect> init, Action<ApiQueryOptions<T>> options, params object[] parameters)
     {
         if (Select == null)
             return Unavailable("Resource select is not initialized");
@@ -382,11 +342,11 @@ public abstract class Api : ControllerBase
             return Unavailable("Resource select is not initialized");
     }
 
-    protected Method<T[]> Query<T>(Action<SqlSelect> init, params object[] parameters) => Query<T>(init, null, parameters);
+    protected Result<T[]> Query<T>(Action<SqlSelect> init, params object[] parameters) => Query<T>(init, null, parameters);
 
-    protected Method<T[]> Query<T>(Action<ApiQueryOptions<T>> options, params object[] parameters) => Query<T>(null, options, parameters);
+    protected Result<T[]> Query<T>(Action<ApiQueryOptions<T>> options, params object[] parameters) => Query<T>(null, options, parameters);
 
-    protected Method<T[]> Query<T>(params object[] parameters) => Query<T>(null, null, parameters);
+    protected Result<T[]> Query<T>(params object[] parameters) => Query<T>(null, null, parameters);
 
     #endregion
 

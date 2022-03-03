@@ -6,20 +6,20 @@ using System.Threading.Tasks;
 
 namespace Aveezo
 {
-    public interface IMethodResult
+    public interface IPagingResult
     {
-        int Total { get; set; }
+        int? Total { get; set; }
 
         int Count { get; set; }
 
         int Offset { get; set; }
     }
 
-    public class MethodResult<T> : IMethodResult
+    public class PagingResult<T> : IPagingResult
     {
         #region Fields
 
-        public int Total { get; set; } = 0;
+        public int? Total { get; set; } = null;
 
         public int Count { get; set; } = 0;
 
@@ -33,7 +33,7 @@ namespace Aveezo
 
         #region Constructors
 
-        public MethodResult()
+        public PagingResult()
         {
 
         }

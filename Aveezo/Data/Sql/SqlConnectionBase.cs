@@ -575,7 +575,7 @@ namespace Aveezo
 
         public virtual Type OverrideType(Type type) => type;
 
-        public virtual void Query(string sql, SqlQuery resultCollection, SqlQueryType queryType, out Exception exception, int commandTimeout)
+        public virtual void Query(string sql, SqlQuery resultCollection, SqlExecuteType queryType, out Exception exception, int commandTimeout)
         {
             using IDisposable connection = GetConnection();
 
@@ -600,7 +600,7 @@ namespace Aveezo
                     }
                 }
 
-                if (queryType == SqlQueryType.Reader)
+                if (queryType == SqlExecuteType.Reader)
                 {
                     IDisposable reader = null;
 
@@ -664,7 +664,7 @@ namespace Aveezo
                         }
                     }
                 }
-                else if (queryType == SqlQueryType.Scalar)
+                else if (queryType == SqlExecuteType.Scalar)
                 {
                     try
                     {
@@ -681,7 +681,7 @@ namespace Aveezo
                         exception = rex;
                     }
                 }
-                else if (queryType == SqlQueryType.Execute)
+                else if (queryType == SqlExecuteType.Execute)
                 {
                     try
                     {
@@ -746,7 +746,7 @@ namespace Aveezo
 
             if (schema == null) schema = DefaultSchema;
             
-            Query($"SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE {(schema != null ? $"TABLE_SCHEMA = '{schema}' AND " : "")}TABLE_NAME = '{name}'", rc, SqlQueryType.Reader, out _, 10000);
+            Query($"SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE {(schema != null ? $"TABLE_SCHEMA = '{schema}' AND " : "")}TABLE_NAME = '{name}'", rc, SqlExecuteType.Reader, out _, 10000);
 
             if (rc)
                 return rc.First.Count > 0;

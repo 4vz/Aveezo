@@ -16,7 +16,7 @@ namespace Aveezo
 
         #region Constructors
 
-        internal SqlUpdateTable(Sql database, SqlTable table, string whereColumn) : base(database, table, SqlQueryType.Execute)
+        internal SqlUpdateTable(Sql database, SqlTable table, string whereColumn) : base(database, table, SqlExecuteType.Execute)
         {
             WhereColumn = whereColumn;
         }

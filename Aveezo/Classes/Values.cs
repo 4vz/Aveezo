@@ -38,6 +38,24 @@ namespace Aveezo
 
         public static implicit operator T(Values<T> v) => v.values[0];
 
+        public static implicit operator Values<T>((T, T) s) => new(s.Item1, s.Item2);
+
+        public static implicit operator Values<T>((T, T, T) s) => new(s.Item1, s.Item2, s.Item3);
+
+        public static implicit operator Values<T>((T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4);
+
+        public static implicit operator Values<T>((T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5);
+
+        public static implicit operator Values<T>((T, T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5, s.Item6);
+
+        public static implicit operator Values<T>((T, T, T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5, s.Item6, s.Item7);
+
+        public static implicit operator Values<T>((T, T, T, T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5, s.Item6, s.Item7, s.Item8);
+
+        public static implicit operator Values<T>((T, T, T, T, T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5, s.Item6, s.Item7, s.Item8, s.Item9);
+
+        public static implicit operator Values<T>((T, T, T, T, T, T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5, s.Item6, s.Item7, s.Item8, s.Item9, s.Item10);
+
         #endregion
 
         #region Methods
