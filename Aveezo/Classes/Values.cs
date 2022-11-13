@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Primitives;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,11 +12,13 @@ namespace Aveezo
     {
         #region Fields
 
-        private T[] values;
+        private readonly T[] values;
 
         public int Count => values.Length;
 
         public T this[int index] => values[index];
+
+        public bool IsEmpty => Count == 0;
 
         #endregion
 
@@ -26,17 +29,30 @@ namespace Aveezo
             this.values = values ?? Array.Empty<T>();
         }
 
+        public Values(StringValues values)
+        {
+            List<T> s = new();
+            foreach (var value in values)
+                s.Add(value.Cast<T>());
+
+            this.values = s.ToArray();
+        }
+
         #endregion
 
         #region Operators
 
-        public static implicit operator Values<T>(T[] s) => new(s);
+        public static implicit operator Values<T>(T[] s) => s == null ? null : new(s);
 
-        public static implicit operator Values<T>(T s) => new(s);
+        public static implicit operator Values<T>(StringValues s) => new(s);
 
-        public static implicit operator T[](Values<T> v) => v.values.ToArray();
+        public static implicit operator Values<T>(T s) => s == null ? null : new(s);
 
-        public static implicit operator T(Values<T> v) => v.values[0];
+        public static implicit operator T[](Values<T> v) => v?.values.ToArray();
+
+        public static implicit operator List<T>(Values<T> v) => v == null ? null : new(v.values);
+
+        public static implicit operator T(Values<T> v) => v.Count == 0 ? default : v.values[0];
 
         public static implicit operator Values<T>((T, T) s) => new(s.Item1, s.Item2);
 
@@ -56,6 +72,19 @@ namespace Aveezo
 
         public static implicit operator Values<T>((T, T, T, T, T, T, T, T, T, T) s) => new(s.Item1, s.Item2, s.Item3, s.Item4, s.Item5, s.Item6, s.Item7, s.Item8, s.Item9, s.Item10);
 
+        public static Values<T> operator +(Values<T> values1, Values<T> values2)
+        {
+            if (values1 == null && values2 == null)
+                return null;
+
+            List<T> list1 = values1 ?? (new());
+            List<T> list2 = values2 ?? (new());
+
+            list1.AddRange(list2);
+
+            return new(list1.ToArray());
+        }
+
         #endregion
 
         #region Methods
@@ -74,6 +103,28 @@ namespace Aveezo
                 return Equals(values, otherValues);
             }
         }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as Values<T>);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 17;
+                foreach (var val in values)
+                {
+                    hash = hash * 31 + val.GetHashCode();
+                }
+                return hash;
+            }
+        }
+
+        public T[] ToArray() => values.ToArray();
+
+        public List<T> ToList() => values.ToList();
 
         #endregion
 

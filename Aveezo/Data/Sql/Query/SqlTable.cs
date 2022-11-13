@@ -19,7 +19,7 @@ namespace Aveezo
         /// </summary>
         public string Name { get; private set; }
 
-        public string Ident => $"{Schema.Format(schema => $"{schema}.")}{Name}";
+        public string Ident => $"{Schema.Invoke(schema => $"{schema}.")}{Name}";
 
         public float TableSample { get; set; } = 0;
 

@@ -36,9 +36,9 @@ namespace Aveezo
 
         public override string OrderByNull => "null";
 
-        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.Format(s => $" '{s}'")}";
+        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.Invoke(s => $" '{s}'")}";
 
-        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" sample({table.TableSample})" : "")}{table.Alias.Format(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" sample({table.TableSample})" : "")}{table.Alias.Invoke(s => $" {s}")}";
 
         // Abstract
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Aveezo;
 
-public sealed class SqlDataCollection<T> where T : SqlData, new()
+public sealed class SqlBucket<T> where T : SqlBucketData, new()
 {
     #region Fields
 
@@ -27,12 +27,12 @@ public sealed class SqlDataCollection<T> where T : SqlData, new()
 
     #region Constructors
 
-    internal SqlDataCollection(Sql sql)
+    internal SqlBucket(Sql sql)
     {
         Database = sql;
     }
 
-    internal SqlDataCollection(Sql sql, bool notQueryResult)
+    internal SqlBucket(Sql sql, bool notQueryResult)
     {
         Database = sql;
         NotQueryResult = notQueryResult;
@@ -42,7 +42,7 @@ public sealed class SqlDataCollection<T> where T : SqlData, new()
 
     #region Operators
 
-    public static implicit operator T(SqlDataCollection<T> collection) => collection.Count > 0 ? collection[0] : null;
+    public static implicit operator T(SqlBucket<T> collection) => collection.Count > 0 ? collection[0] : null;
 
     #endregion
 
@@ -133,7 +133,7 @@ public sealed class SqlDataCollection<T> where T : SqlData, new()
     /// </summary>
     public SqlQuery Sync()
     {
-        var info = SqlData.GetInfo(typeof(T));
+        var info = SqlBucketData.GetInfo(typeof(T));
 
         Dictionary<Guid, SqlRow> latestData;
 

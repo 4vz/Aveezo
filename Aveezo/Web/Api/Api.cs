@@ -36,8 +36,8 @@ public abstract class Api : ControllerBase
 
     /// <summary>
     /// The ApiOptions instance.
-    /// </summary>
-    protected ApiOptions Options { get; }
+    /// publicsummary>
+    public ApiOptions Options { get; }
 
     /// <summary>
     /// ApiParameters object.
@@ -45,14 +45,14 @@ public abstract class Api : ControllerBase
     public ApiParameters Parameters { get; set; } = null;
 
     /// <summary>
-    /// Sql object from SqlAttribute.
-    /// </summary>
-    public Sql Sql { get; set; } = null;
-
-    /// <summary>
     /// Select object from ResourceAttribute.
     /// </summary>
     public ApiSelect Select { get; set; } = null;
+
+    /// <summary>
+    /// Sql object from SqlAttribute.
+    /// </summary>
+    public Sql Sql { get; set; } = null;
 
     #endregion
 
@@ -93,8 +93,8 @@ public abstract class Api : ControllerBase
         var opt = new ApiQueryOptions<T>();
         options?.Invoke(opt);
 
-        Values<string> fields = null;
         List<string> displayFields = null;
+        Values<string> queryFields = null;
 
         if (create != null)
         {
@@ -109,16 +109,15 @@ public abstract class Api : ControllerBase
                 return Unavailable($"Builder with the identifier key ({Sql.Id}) is not found in the current builders. Please review the select function for this method.");
             }
 
-            fields = Parameters.Fields;
             displayFields = new();
 
             if (Parameters.Queries != null && Parameters.Queries.Length > 0)
             {
-                Dictionary<string, (SqlQueryType, string)[]> queries = new();
+                Dictionary<string, (SqlQueryType, Values<string>)[]> queries = new();
 
                 foreach (var (a, b) in Parameters.Queries)
                 {
-                    List<(SqlQueryType, string)> states = new();
+                    List<(SqlQueryType, Values<string>)> states = new();
 
                     foreach (var (c, d) in b)
                     {
@@ -142,7 +141,7 @@ public abstract class Api : ControllerBase
                     queries.Add(a, states.ToArray());
                 }
 
-                select.BuilderQuery(queries);
+                select.BuilderQuery(queries, out queryFields);
             }
 
             if (Parameters.Sorts != null && Parameters.Sorts.Length > 0)
@@ -172,7 +171,7 @@ public abstract class Api : ControllerBase
 
             foreach (var (field, fieldOptions) in Parameters.FieldOptions)
             {
-                if (!fieldOptions.HasFlag(FieldOptions.HideInFields))
+                if (!fieldOptions.HasFlag(FieldOptions.HideInFields) && Parameters.Fields.Contains(field))
                     displayFields.Add(field);
             }
         }
@@ -187,7 +186,7 @@ public abstract class Api : ControllerBase
                 else if (Parameters.Limit < 0)
                     select.LimitLength = 1;
                 else if (Parameters.Limit == 0)
-                    select.LimitLength = opt.MaximumLimit;
+                    select.LimitLength = opt.DefaultLimit;
                 else
                     select.LimitLength = Parameters.Limit;
             }
@@ -210,7 +209,7 @@ public abstract class Api : ControllerBase
 
         Dev.Watch(out var sw);
 
-        var queryMain = select.Execute(Parameters.Fields);
+        var queryMain = select.Execute(Parameters.Fields + queryFields);
 
         if (queryMain.Ok)
         {
@@ -243,27 +242,36 @@ public abstract class Api : ControllerBase
                                 property.Context["links"] = links;
                             }
 
-                            if (Parameters.Properties != null && Parameters.Properties.ContainsKey(name))
+
+                            if (property.Builder.Binder == null)
                             {
-                                var propertyInfo = Parameters.Properties[name];
-                                var propertyValue = propertyInfo.GetValue(property.Item);
-                                if (propertyValue == null)
+                                if (Parameters.Properties != null && Parameters.Properties.ContainsKey(name))
                                 {
-                                    object value = null;
+                                    var propertyInfo = Parameters.Properties[name];
+                                    var propertyType = propertyInfo.PropertyType;
 
-                                    if (Parameters.FieldOptions[name].HasFlag(FieldOptions.Encoded))
-                                        value = Encode(property.Value);
+                                    // convert value to property type
+                                    var value = property.FormattedValue;
+                                    if (value != null && value.GetType() != propertyType)
+                                    {
+                                        if (value.TryCast(propertyType, out object cast))
+                                            propertyInfo.SetValue(property.Item, cast);
+                                    }
                                     else
-                                        value = property.FormattedValue;
-
-                                    if (value != null)
                                         propertyInfo.SetValue(property.Item, value);
+
+                                    if (property.Ext is string href)
+                                    {
+                                        links.Add(name == Sql.Id ? "self" : name, new ResourceLink { Href = href });
+                                    }
                                 }
                             }
-
-                            if (property.Builder.Ext?.Invoke(property.Item) is string href)
+                            else
                             {
-                                links.Add(name == Sql.Id ? "self" : name, new ResourceLink { Href = href });
+                                if (property.Ext is string href)
+                                {
+                                    links.Add(name == Sql.Id ? "self" : name, new ResourceLink { Href = href });
+                                }
                             }
                         },
                         item =>
@@ -271,8 +279,20 @@ public abstract class Api : ControllerBase
                             if (item.Item is Resource resource)
                             {
                                 if (item.Context["links"] is Dictionary<string, ResourceLink> links && links.Count > 0)
-                                    resource._Links = links;
+                                    resource.Links = links;
                             }
+                        }, 
+                        formatter =>
+                        {
+                            var name = formatter.Builder.Name;
+                            object value = null;
+
+                            if (Parameters.FieldOptions.ContainsKey(name) && Parameters.FieldOptions[name].HasFlag(FieldOptions.Encoded) && formatter.FormattedValue == null)
+                                value = Encode(formatter.Value);
+                            else
+                                value = formatter.FormattedValue;
+
+                            return value;
                         }
                     );
                 }
@@ -336,7 +356,7 @@ public abstract class Api : ControllerBase
 
             init?.Invoke(select);
 
-            return Query<T>(select, options, null);
+            return Query(select, options, null);
         }
         else
             return Unavailable("Resource select is not initialized");
@@ -424,6 +444,6 @@ public class ApiQueryOptions<T>
 [ModelBinder(typeof(ApiSelectBinder))]
 public sealed class ApiSelect
 {
-    public Func<object[], SqlSelect> SqlSelect { get; set; } = null;
+    public Func<Parameters, SqlSelect> SqlSelect { get; set; } = null;
 }
 

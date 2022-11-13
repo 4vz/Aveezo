@@ -97,6 +97,8 @@ namespace Aveezo
             IsFloatingPoint(type) ||
             type == typeof(decimal);
 
+        public static bool IsNullable(this Type type) => type.IsGenericType ? type.GetGenericTypeDefinition() == typeof(Nullable<>) : false;
+
         public static bool IsAssignableToGenericType(this Type givenType, Type genericType) => givenType.IsAssignableToGenericType(genericType, out var _);
 
         public static bool IsAssignableToGenericType(this Type givenType, Type genericType, out Type[] typeArguments)

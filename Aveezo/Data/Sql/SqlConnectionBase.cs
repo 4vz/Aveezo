@@ -27,6 +27,8 @@ namespace Aveezo
 
         public string Database { get; protected set; } = null;
 
+        public IPAddressCidr IP { get; }
+
         #endregion
 
         #region Enums
@@ -362,7 +364,7 @@ namespace Aveezo
             {
                 var entries = new List<string>();
                 foreach (var (key, value) in dict) entries.Add($"{key} = {FormatValue(value)}");
-                return $"{entries.Join(", ")}";
+                return $"{entries.Join(", ")} ";
             }
             else if (obj is IList list)
                 return FormatQuery(list.ToArray<object>());
@@ -541,9 +543,9 @@ namespace Aveezo
 
         public virtual string FormatFrom(string from) => $"from {from}";
 
-        public virtual string FormatWhere(string where) => where.Format(s => $"where {s}");
+        public virtual string FormatWhere(string where) => where.Invoke(s => $"where {s}");
 
-        public virtual string FormatOrder(string order) => order.Format(s => $"order by {s}");
+        public virtual string FormatOrder(string order) => order.Invoke(s => $"order by {s}");
 
         public virtual string FormatColumn(SqlColumn column) => FormatColumn(column, false);
 
@@ -551,17 +553,17 @@ namespace Aveezo
             canAlias && column.Alias != null ? column.Alias :
             column.IsValue ? FormatValue(column.Value) :
             column.Operation != SqlColumnOperation.None ? FormatColumnOperations(column, canAlias) :
-            $"{column.Table.Format(table => $"{table.Alias}.")}{column.Name}";
+            $"{column.Table.Invoke(table => $"{table.Alias}.")}{column.Name}";
 
-        public virtual string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column, false)}{column.Alias.Format(s => $" as '{s}'")}";
+        public virtual string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column, false)}{column.Alias.Invoke(s => $" as '{s}'")}";
 
         public virtual string FormatWhere(SqlColumn column) => $"{FormatColumn(column, true)}";
 
-        public virtual string FormatFromWithSchemaOrNot(SqlTable table) => $"{table.Schema.Format(schema => $"{schema}.")}{table.Name}";
+        public virtual string FormatFromWithSchemaOrNot(SqlTable table) => $"{table.Schema.Invoke(schema => $"{schema}.")}{table.Name}";
 
         public virtual string FormatFromStatementOrTable(SqlTable table) => table.IsStatement ? $"({table.Name})" : FormatFromWithSchemaOrNot(table);
 
-        public virtual string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{table.Alias.Format(s => $" as '{s}'")}";
+        public virtual string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{table.Alias.Invoke(s => $" as '{s}'")}";
 
         public virtual string FormatNumber(object number) => number.ToString();
 
@@ -762,7 +764,7 @@ namespace Aveezo
 
         public virtual string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatWhere(where)}";
 
-        public virtual string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"where {whereColumn} in {FormatQuery(whereKeys)}";
+        public virtual string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $" where {whereColumn} in {FormatQuery(whereKeys)}";
 
         public virtual string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatWhere(where)}";
 

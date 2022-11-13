@@ -86,7 +86,7 @@ public class SqlDataInfo
     #endregion
 }
 
-public abstract class SqlData
+public abstract class SqlBucketData
 {
     #region Fields
 
@@ -104,7 +104,7 @@ public abstract class SqlData
 
     #region Constructors
 
-    public SqlData()
+    public SqlBucketData()
     {
         Id = Guid.NewGuid();
     }

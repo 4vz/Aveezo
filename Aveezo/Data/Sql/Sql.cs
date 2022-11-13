@@ -27,12 +27,6 @@ public sealed class Sql
 
     public const string Id = "___id";
 
-    public static readonly object Null = new DataObject("NULL");
-
-    public static readonly object NotNull = new DataObject("NOTNULL");
-
-    public static readonly object Cancel = new DataObject("CANCEL");
-
     #endregion
 
     #region Fields
@@ -44,6 +38,8 @@ public sealed class Sql
     public SqlDatabaseType DatabaseType { get; private set; }
 
     public string Database { get => Connection.Database; }
+
+    public string IP { get; } = null;
 
     public int Timeout { get; set; } = 30;
 
@@ -97,7 +93,10 @@ public sealed class Sql
 
     public Sql(string connectionString, SqlDatabaseType databaseType, string name)
     {
-        Name = name;
+        if (name == null)
+            name = Rnd.String(5, Collections.WordDigit);
+
+        Name = $"Sql:{name}";
 
         if (connectionString == null)
             throw new ArgumentNullException("connectionString");
@@ -347,9 +346,9 @@ public sealed class Sql
 
     public Dictionary<T, U> SelectToDictionary<T, U>(SqlTable table, string columnNameAsKey, string columnNameAsValue)
     {
-        if (table == null) throw new ArgumentNullException("table");
-        if (columnNameAsKey == null) throw new ArgumentNullException("columnNameAsKey");
-        if (columnNameAsValue == null) throw new ArgumentNullException("columnNameAsValue");
+        if (table == null) throw new ArgumentNullException(nameof(table));
+        if (columnNameAsKey == null) throw new ArgumentNullException(nameof(columnNameAsKey));
+        if (columnNameAsValue == null) throw new ArgumentNullException(nameof(columnNameAsValue));
 
         Dictionary<T, U> dictionary = null;
 
@@ -386,7 +385,7 @@ public sealed class Sql
 
             var rc = se.Execute();
 
-            if (rc)
+            if (rc.Ok)
                 dictionary = rc.First.ToDictionary<T>(pk);
         }
 
@@ -418,7 +417,7 @@ public sealed class Sql
 
             var rc = se.Execute();
 
-            if (rc)
+            if (rc.Ok)
                 list = rc.First.ToList<T>(column.Name);
         }
 
@@ -451,22 +450,20 @@ public sealed class Sql
 
             var rc = se.Execute();
 
-            if (rc)
+            if (rc.Ok)
                 list = rc.First.ToList();
         }
 
         return list;
     }
 
+    public SqlBucket<T> Collection<T>() where T : SqlBucketData, new() => new(this);
 
+    public SqlBucket<T> Pull<T>() where T : SqlBucketData, new() => Pull<T>(null);
 
-    public SqlDataCollection<T> Collection<T>() where T : SqlData, new() => new SqlDataCollection<T>(this);
-
-    public SqlDataCollection<T> Pull<T>() where T : SqlData, new() => Pull<T>(null);
-
-    public SqlDataCollection<T> Pull<T>(SqlCondition where) where T : SqlData, new()
+    public SqlBucket<T> Pull<T>(SqlCondition where) where T : SqlBucketData, new()
     {
-        var info = SqlData.GetInfo(typeof(T));
+        var info = SqlBucketData.GetInfo(typeof(T));
 
         var table = new SqlTable(info.Table);
         var select = Select(info.Columns.Invoke((column) => table[column])).From(table);
@@ -476,9 +473,9 @@ public sealed class Sql
         return Pull<T>(rs, where, info);
     }
 
-    private SqlDataCollection<T> Pull<T>(SqlResult result, SqlCondition where, SqlDataInfo info) where T : SqlData, new()
+    private SqlBucket<T> Pull<T>(SqlResult result, SqlCondition where, SqlDataInfo info) where T : SqlBucketData, new()
     {
-        var dict = new SqlDataCollection<T>(this, false);
+        var dict = new SqlBucket<T>(this, false);
 
         foreach (var row in result)
         {
@@ -565,7 +562,7 @@ public sealed class Sql
     public static bool Load(Config config, string name, string database, out Sql sql, EventHandler<SqlLoadEventArgs> status)
     {
         sql = Load(config, name, database);
-
+        
         if (sql)
         {
             status?.Invoke(sql, new SqlLoadEventArgs { Success = true });

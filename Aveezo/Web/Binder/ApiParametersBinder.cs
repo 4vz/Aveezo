@@ -29,6 +29,14 @@ public class ApiParametersBinder : IModelBinder
 
     #region Methods
 
+    private Values<string> GetQueryStringValue(ModelBindingContext bindingContext, string name)
+    {
+        if (bindingContext.HttpContext.Request.Query.ContainsKey(name))
+            return bindingContext.HttpContext.Request.Query[name];
+        else
+            return null;
+    }
+
     public Task BindModelAsync(ModelBindingContext bindingContext)
     {
         var action = bindingContext.ActionContext.ActionDescriptor as ControllerActionDescriptor;
@@ -36,10 +44,8 @@ public class ApiParametersBinder : IModelBinder
         List<(FieldAttribute, PropertyInfo)> fieldAttributes = new();
 
         // Get from referenced
-        if (action.MethodInfo.HasGenericAttributes<ResourceAttribute<Resource>>(out var attributes))
+        if (ApiService.IsResourceReturnType(action.MethodInfo, out Type resourceType))
         {
-            var resourceType = attributes[0].Type.GetGenericArguments()[0];
-
             foreach (var property in resourceType.GetProperties())
             {
                 if (property.CanWrite && property.CanRead)
@@ -57,7 +63,7 @@ public class ApiParametersBinder : IModelBinder
         int limit = 0;
         int offset = -1;
         string after = null;
-        Dictionary<string, (string, string)[]> queries = null;
+        Dictionary<string, (string, Values<string>)[]> queries = null;
         Dictionary<string, bool> sorts = null;
 
         List<string> fields = null;
@@ -121,6 +127,7 @@ public class ApiParametersBinder : IModelBinder
             }
         }
 
+
         foreach (var (attr, property) in fieldAttributes)
         {
             var name = attr.Name;
@@ -131,26 +138,80 @@ public class ApiParametersBinder : IModelBinder
             {
                 parameters.Add(name);
 
-                var param = bindingContext.ValueProvider.GetValue(attr.Name);
+                var queryValues = GetQueryStringValue(bindingContext, attr.Name);
 
-                if (!string.IsNullOrEmpty(param.FirstValue))
+                if (queryValues != null && !queryValues.IsEmpty)
                 {
-                    List<(string, string)> values = new();
+                    List<(string, Values<string>)> values = new();
 
-                    foreach (var value in param.Values)
+                    foreach (var value in queryValues)
                     {
                         var valueLower = value.ToLower();
 
-                        if (valueLower.StartsWith("like:", value, out var like)) values.Add(("like", like));
-                        else if (valueLower.StartsWith("start:", value, out var start)) values.Add(("start", start));
-                        else if (valueLower.StartsWith("end:", value, out var end)) values.Add(("end", end));
-                        else if (valueLower.StartsWith("notlike:", value, out var notlike)) values.Add(("notlike", notlike));
-                        else if (valueLower.StartsWith("gt:", value, out var gt)) values.Add(("gt", gt));
-                        else if (valueLower.StartsWith("gte:", value, out var gte)) values.Add(("gte", gte));
-                        else if (valueLower.StartsWith("lt:", value, out var lt)) values.Add(("lt", lt));
-                        else if (valueLower.StartsWith("lte:", value, out var lte)) values.Add(("lte", lte));
-                        else if (valueLower.StartsWith("not:", value, out var not)) values.Add(("not", not));
-                        else values.Add((null, value));
+                        string qattr = null;
+                        string qval = null;
+
+                        if (valueLower.StartsWith("like:", value, out var like))
+                        {
+                            qattr = "like";
+                            qval = like;
+                        }
+                        else if (valueLower.StartsWith("start:", value, out var start))
+                        {
+                            qattr = "start";
+                            qval = start;
+                        }
+                        else if (valueLower.StartsWith("end:", value, out var end))
+                        {
+                            qattr = "end";
+                            qval = end;
+                        }
+                        else if (valueLower.StartsWith("notlike:", value, out var notlike))
+                        {
+                            qattr = "notlike";
+                            qval = notlike;
+                        }
+                        else if (valueLower.StartsWith("gt:", value, out var gt))
+                        {
+                            qattr = "gt";
+                            qval = gt;
+                        }
+                        else if (valueLower.StartsWith("gte:", value, out var gte))
+                        {
+                            qattr = "gte";
+                            qval = gte;
+                        }
+                        else if (valueLower.StartsWith("lt:", value, out var lt))
+                        {
+                            qattr = "lt";
+                            qval = lt;
+                        }
+                        else if (valueLower.StartsWith("lte:", value, out var lte))
+                        {
+                            qattr = "lte";
+                            qval = lte;
+                        }
+                        else if (valueLower.StartsWith("not:", value, out var not))
+                        {
+                            qattr = "not";
+                            qval = not;
+                        }
+                        else
+                        {
+                            qval = value;
+                        }
+
+                        var multival = qval.Split(Collections.Comma, StringSplitOptions.RemoveEmptyEntries);
+                        
+                        if (multival.Length > 0)
+                        {
+                            values.Add((qattr, multival));
+                        }
+                        else
+                        {
+                            values.Add((qattr, qval));
+                        }
+                        
                     }
 
                     if (queries == null)
@@ -186,16 +247,22 @@ public class ApiParametersBinder : IModelBinder
                 {
                     fields = new();
                     properties = new();
-                    fieldOptions = new();
+                    //fieldOptions = new();
                 }
 
                 if (!fields.Contains(name))
                 {
                     fields.Add(name);
                     properties.Add(name, property);
-                    fieldOptions.Add(name, options);
+                    //fieldOptions.Add(name, options);
                 }
             }
+
+            if (fieldOptions == null)
+                fieldOptions = new();
+
+            fieldOptions.Add(name, options);
+
 
             if (sortValues != null)
             {
@@ -270,7 +337,7 @@ public class ApiParametersBinder : IModelBinder
         }
 
         // paging
-        if (ApiParameters.IsPagingResult(action.MethodInfo, out Type type))
+        if (ApiService.IsPagingResult(action.MethodInfo, out Type type))
         {
             paging = true;
 
@@ -344,3 +411,5 @@ public class ApiParametersBinder : IModelBinder
 
     #endregion
 }
+
+

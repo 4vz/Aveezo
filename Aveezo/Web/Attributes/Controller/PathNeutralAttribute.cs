@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 namespace Aveezo;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public class PathAttribute : RouteAttribute
+public class PathNeutralAttribute : RouteAttribute, IApiVersionNeutral
 {
-    public PathAttribute(string template) : base($"/v{{version:apiVersion}}/{template.TrimStart('/').TrimEnd('/')}")
+    public PathNeutralAttribute(string template) : base($"/{template.TrimStart('/').TrimEnd('/')}")
     {
     }
 }

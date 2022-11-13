@@ -95,8 +95,6 @@ public class SqlSelect : SqlQueryBase
 
     public SqlCondition WhereCondition { get; set; } = null;
 
-    private SqlCondition innerCondition = null;
-
     internal bool after = false;
 
     public SqlOrder Order { get; set; }
@@ -243,6 +241,8 @@ public class SqlSelect : SqlQueryBase
         return this;
     }
 
+
+
     public SqlSelect Limit(int limit, int offset)
     {
         LimitLength = limit;
@@ -255,11 +255,11 @@ public class SqlSelect : SqlQueryBase
     public SqlSelect UnionAll(params SqlSelect[] selects)
     {
         // should match with SelectColumns
-        var sc = SelectColumns.Format(o => o.Length, 0);
+        var sc = SelectColumns.Invoke(o => o.Length, 0);
 
         foreach (var select in selects)
         {
-            var ssc = select.SelectColumns.Format(o => o.Length, 0);
+            var ssc = select.SelectColumns.Invoke(o => o.Length, 0);
             if (ssc != sc) throw new InvalidOperationException("SelectColumns should match with main SqlSelect");
         }
 
@@ -343,24 +343,32 @@ public class SqlSelect : SqlQueryBase
     /// <param name="add">Add new property</param>
     public void Builder<T>(Action<SqlBuilderAdd<T>> add) where T : class
     {
-        if (IsBuilder) throw new InvalidOperationException("Builder has already been created for this instance");
+        if (IsBuilder) throw new InvalidOperationException("Builder has already been created for this instance.");
 
         add((name, column, formatter, binder, select, query, requires, ext) =>
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            if (column is null) throw new ArgumentNullException(nameof(column));
             if (builders.ContainsKey(name)) throw new InvalidOperationException($"Builder with {name} option has already added.");
+
+            var nocolumn = false;
+            if (column is null)
+            {
+                nocolumn = true;
+                column = SqlColumn.Static(null);
+            }
+
+            if (nocolumn && query != null) throw new ArgumentNullException(nameof(column), $"The {nameof(column)} parameter is required when specifying {nameof(query)} parameter.");
 
             builders.Add(name, new SqlBuilder
             {
                 Name = name,
                 Column = column,
-                Formatter = formatter != null ? values => formatter.Invoke(new SqlBuilderFormatter { Name = name, Values = values }) : null,
-                Binder = binder != null ? (obj, values, formattedValues) => binder.Invoke(obj as T, new SqlBuilderBinder { Name = name, Values = values, FormattedValues = formattedValues }) : null,
+                Formatter = formatter != null ? values => formatter.Invoke(new SqlBuilderFormatter(values, name)) : null,
+                Binder = binder != null ? (obj, values, formattedValues) => binder.Invoke(obj as T, new SqlBuilderBinder(formattedValues, values, name)) : null,
                 Select = select,
                 Query = query,
                 Requires = requires,
-                Ext = ext != null ? o => ext(o as T) : null
+                Ext = ext != null ? formattedValues => ext(new SqlBuilderExt(formattedValues, name)) : null
             });
         });
     }
@@ -370,7 +378,6 @@ public class SqlSelect : SqlQueryBase
     /// </summary>
     /// 
     public void RemoveBuilder() => builders.Clear();
-
 
     /// <summary>
     /// Get builder list by name.
@@ -403,7 +410,7 @@ public class SqlSelect : SqlQueryBase
             if (v == null && builders.ContainsKey(name))
             {
                 v = new();
-                v.Add("___default", builders[name]);
+                v.Add(Table.Alias, builders[name]);
             }
 
             builderCache.Add(name, v);
@@ -417,7 +424,7 @@ public class SqlSelect : SqlQueryBase
     /// </summary>
     public Dictionary<string, SqlBuilder> GetBuildersByStack(string stack)
     {
-        if (stack == null || stack == "___default")
+        if (stack == null || stack == Table.Alias)
             return builders;
         else if (innerSelect != null)
         {
@@ -465,16 +472,26 @@ public class SqlSelect : SqlQueryBase
     /// <summary>
     /// Prepares select for query. 
     /// </summary>
-    public void BuilderQuery(Dictionary<string, (SqlQueryType, string)[]> queries) 
+    public void BuilderQuery(Dictionary<string, (SqlQueryType, Values<string>)[]> queries, out Values<string> useBuilders) 
     {
         if (!IsBuilder) throw new InvalidOperationException("This select instance is not in builder mode.");
 
         Dictionary<string, SqlCondition> stackConditions = new();
+        
+        List<string> useBuilderList = new();
 
         // field1 => state1, state2, field2 => state1, state2
         foreach (var (name, states) in queries)
         {
             var builderStack = GetBuilderStack(name);
+
+            if (builderStack == null)
+                continue;
+            else
+            {
+                // name should be in selectbuilders
+                useBuilderList.Add(name);
+            }
 
             // select1, select2
             foreach (var (stack, builder) in builderStack)
@@ -499,14 +516,58 @@ public class SqlSelect : SqlQueryBase
                 {
                     SqlCondition stateCondition = null;
 
+                    // true is and, false is or
+                    bool and = false;
+
+                    if (type == SqlQueryType.NotLike || type == SqlQueryType.NotEqual)
+                        and = true;
+
                     if (builder.Query == null)
                     {
-                        if (type == SqlQueryType.Equal)
-                            stateCondition = column == query;
+                        //
+                        // TODO check column type then convert query to column type then compare
+                        //
+
+                        foreach (var localQuery in query)
+                        {
+                            SqlCondition localCondition = null;
+
+                            if (type == SqlQueryType.Equal)
+                                localCondition = column == localQuery;
+                            else if (type == SqlQueryType.Like)
+                                localCondition = column % $"%{localQuery}%";
+                            else if (type == SqlQueryType.StartsWith)
+                                localCondition = column % $"{localQuery}%";
+                            else if (type == SqlQueryType.EndsWith)
+                                localCondition = column % $"%{localQuery}";
+                            else if (type == SqlQueryType.NotLike)
+                                localCondition = column ^ $"%{localQuery}%";
+                            else if (type == SqlQueryType.NotEqual)
+                                localCondition = column != localQuery;
+
+                            if (localCondition is not null)
+                            {
+                                if (and)
+                                    stateCondition = stateCondition && localCondition;
+                                else
+                                    stateCondition = stateCondition || localCondition;
+                            }
+                        }
                     }
                     else
                     {
-                        stateCondition = builder.Query(new SqlQueryColumn(column, columns, type, query));
+                        foreach (var localQuery in query)
+                        {
+                            SqlCondition localCondition = builder.Query(new SqlBuilderQuery(columns, type, localQuery, name));
+
+                            if (localCondition is not null)
+                            {
+                                if (and)
+                                    stateCondition = stateCondition && localCondition;
+                                else
+                                    stateCondition = stateCondition || localCondition;
+                            }
+                        }                        
                     }
 
                     sumCondition = sumCondition && stateCondition;
@@ -515,12 +576,12 @@ public class SqlSelect : SqlQueryBase
 
                 condition = condition && sumCondition;
 
-                if (stackConditions.ContainsKey(stack))
+                if (!stackConditions.ContainsKey(stack))
                     stackConditions.Add(stack, condition);
                 else
                     stackConditions[stack] = condition;
             }
-        }
+        } 
 
         foreach (var (stack, condition) in stackConditions)
         {
@@ -528,22 +589,30 @@ public class SqlSelect : SqlQueryBase
             {
                 WhereCondition = condition && WhereCondition;
             }
-            else if (innerSelect != null && innerSelect.Table.Alias == stack)
+            else if (innerSelect != null)
             {
-                innerSelect.WhereCondition = condition && innerSelect.WhereCondition;
-            }
-            else if (innerSelect.unionAlls != null)
-            {
-                foreach (var unionAll in innerSelect.unionAlls)
+                if (innerSelect.Table.Alias == stack)
                 {
-                    if (unionAll.Table.Alias == stack)
+                    innerSelect.WhereCondition = condition && innerSelect.WhereCondition;
+                }
+                else if (innerSelect.unionAlls != null)
+                {
+                    foreach (var unionAll in innerSelect.unionAlls)
                     {
-                        unionAll.WhereCondition = condition && unionAll.WhereCondition;
-                        break;
+                        if (unionAll.Table.Alias == stack)
+                        {
+                            unionAll.WhereCondition = condition && unionAll.WhereCondition;
+                            break;
+                        }
                     }
                 }
             }
         }
+
+        if (useBuilderList.Count > 0)
+            useBuilders = useBuilderList.ToArray();
+        else
+            useBuilders = null;
     }
 
     private void Extend(List<string> extSelectBuilders, string name)
@@ -649,7 +718,7 @@ public class SqlSelect : SqlQueryBase
             GetTableStatement(selectBuilders),
             allColumns,
             joins.ToArray(),
-            innerCondition && WhereCondition,
+            WhereCondition,
             Order, limit, offset, Options)
             .Array();
     }
@@ -675,105 +744,8 @@ public class SqlSelect : SqlQueryBase
         return 0;
     }
 
-    #region API
-
-    internal void SetInnerCondition(SqlCondition conditon) => innerCondition = conditon;
-
-    internal SqlColumn GetFilterColumn(string name) => filters.ContainsKey(name) ? filters[name] : null;
-
-    public void Filter<T>(PropFilter<T> filter, string name)
-    {
-    }
-
-    public void Filter<T>(PropFilter<T> filter, SqlColumn column) => Filter(filter, column, (Func<object, object>)null);
-
-    public void Filter<T>(PropFilter<T> filter, SqlColumn column, Func<object, object> modifier) => Filter(filter, column, new Dictionary<string, Func<object, object>> { { "___default", modifier } });
-
-    public void Filter<T>(PropFilter<T> filter, SqlColumn column, Dictionary<string, Func<object, object>> modifiers)
-    {
-        if (filter == null) throw new ArgumentNullException(nameof(filter));
-        if (column == null) throw new ArgumentNullException(nameof(column));
-        if (modifiers == null) throw new ArgumentNullException(nameof(modifiers));
-
-        filters.Add(filter.Name, column);
-
-        if (filter.Values != null)
-        {
-            foreach (var (attribute, filterValue) in filter.Values)
-            {
-                SqlCondition sumCondition = null;
-
-                object value;
-
-                T castValue = filterValue.Cast<T>();
-
-                foreach (var (name, modifier) in modifiers)
-                {
-                    if (modifier != null)
-                        value = modifier(castValue);
-                    else
-                        value = castValue;
-
-                    if (value is not null)
-                    {
-                        SqlCondition newCondition = null;
-
-                        if (value is DataObject obj)
-                        {
-                            if (obj.Data == "NULL")
-                                newCondition = column == null;
-                            else if (obj.Data == "NOTNULL")
-                                newCondition = column != null;
-                            else if (obj.Data == "CANCEL")
-                                newCondition = new SqlCondition(false);
-                        }
-                        else
-                        {
-                            var isNumeric = value.IsNumeric();
-
-                            if (attribute == null)
-                                newCondition = column == value;
-                            else if (attribute == "like")
-                                newCondition = column % $"%{value}%";
-                            else if (attribute == "start")
-                                newCondition = column % $"{value}%";
-                            else if (attribute == "end")
-                                newCondition = column % $"%{value}";
-                            else if (attribute == "notlike")
-                                newCondition = column ^ $"%{value}%";
-                            else if (attribute == "not")
-                                newCondition = column != value;
-                            else if (isNumeric && attribute == "lt")
-                                newCondition = column < value;
-                            else if (isNumeric && attribute == "gt")
-                                newCondition = column > value;
-                            else if (isNumeric && attribute == "lte")
-                                newCondition = column <= value;
-                            else if (isNumeric && attribute == "gte")
-                                newCondition = column >= value;
-                            else
-                                newCondition = column == value;
-                        }
-
-                        if (name != "___default")
-                            newCondition = newCondition && Table["___select"] == name;
-
-                        if (sumCondition is null)
-                            sumCondition = newCondition;
-                        else
-                            sumCondition = sumCondition || newCondition;
-                    }
-                }
-
-                WhereCondition = sumCondition && WhereCondition;
-            }
-        }
-    }
-
     #endregion
-
-    #endregion
-
+     
     #region Statics
 
     public static SqlSelect UnionAlls(params SqlSelect[] selects)
@@ -789,73 +761,71 @@ public class SqlSelect : SqlQueryBase
     #endregion
 }
 
-public sealed class SqlBuilder
+public delegate void SqlBuilderAdd<T>(
+    string name,
+    SqlColumn column = null,
+    Func<SqlBuilderFormatter, object> formatter = null,
+    Action<T, SqlBuilderBinder> binder = null,
+    Action<SqlSelect> select = null,
+    Func<SqlBuilderQuery, SqlCondition> query = null,
+    Values<string> requires = null,
+    Func<SqlBuilderExt, object> ext = null
+    );
+
+
+
+public class SqlBuilderExt
 {
     #region Fields
 
-    public string Name { get; init; }
+    private readonly Dictionary<string, object> formattedValues;
 
-    public SqlColumn Column { get; init; } = SqlColumn.Null;
+    public object this[string name] => formattedValues.ContainsKey(name) ? formattedValues[name] : null;
 
-    public Func<Dictionary<string, SqlCell>, object> Formatter { get; init; }
+    public string Id => this[Sql.Id] as string;
 
-    public Action<object, Dictionary<string, SqlCell>, Dictionary<string, object>> Binder { get; init; }
+    public string Current => this[currentName] as string;
 
-    public Action<SqlSelect> Select { get; init; }
+    private string currentName;
 
-    public Func<SqlQueryColumn, SqlCondition> Query { get; init; }
+    #endregion
 
-    public Values<string> Requires { get; init; }
-    
-    public Func<object, object> Ext { get; init; }
+    #region Constructors
+
+    public SqlBuilderExt(Dictionary<string, object> formattedValues, string currentName)
+    {
+        this.formattedValues = formattedValues;
+        this.currentName = currentName;
+    }
 
     #endregion
 }
 
-public delegate void SqlBuilderAdd<T>(
-    string name,
-    SqlColumn column,
-    Func<SqlBuilderFormatter, object> formatter = null,
-    Action<T, SqlBuilderBinder> binder = null,
-    Action<SqlSelect> select = null,
-    Func<SqlQueryColumn, SqlCondition> query = null,
-    Values<string> requires = null,
-    Func<T, object> ext = null
-    );
-
-public class SqlBuilderFormatter
-{
-    public string Name { get; init; }
-
-    public Dictionary<string, SqlCell> Values { get; init; }
-
-    public SqlCell Value => Values.ContainsKey(Name) ? Values[Name] : null;
-}
-
 public class SqlBuilderBinder : SqlBuilderFormatter
 {
-    public Dictionary<string, object> FormattedValues { get; init; }
+    #region Fields
 
-    public object FormattedValue => Values.ContainsKey(Name) ? FormattedValues[Name] : null;
-}
+    private readonly Dictionary<string, object> formattedValues;
 
-public sealed class SqlQueryColumn : SqlColumn
-{
-    private Dictionary<string, SqlColumn> builderColumns;
+    public new object this[string name] => formattedValues.ContainsKey(name) ? formattedValues[name] : null;
 
-    public SqlQueryType Type { get; }
+    public Dictionary<string, SqlCell> Cells => values;
 
-    public string Query { get; }
+    #endregion
 
-    public SqlColumn this[string name] => builderColumns[name];
+    #region Constructors
 
-    internal SqlQueryColumn(SqlColumn main, Dictionary<string, SqlColumn> builderColumns, SqlQueryType type, string query) : base(main.Table, main.Name, main.Alias)
+    internal SqlBuilderBinder(Dictionary<string, object> formattedValues, Dictionary<string, SqlCell> values, string name) : base(values, name)
     {
-        this.builderColumns = builderColumns;
-        Type = type;
-        Query = query;
+        this.formattedValues = formattedValues;
+
+        
     }
+
+    #endregion
 }
+
+
 
 [Flags]
 public enum SqlSelectOptions

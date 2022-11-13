@@ -32,7 +32,9 @@ namespace Aveezo
 
         // Virtual
 
-        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample system({table.TableSample})" : "")}{table.Alias.Format(s => $" {s}")}";
+        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.Invoke(s => $" as \"{s}\"")}";
+
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample system({table.TableSample})" : "")}{table.Alias.Invoke(s => $" {s}")}";
 
         public override Type OverrideType(Type type)
         {
@@ -197,7 +199,7 @@ ALTER TABLE {DefaultSchema}.{SqlService.ServiceTable}
             var pgnamespace = admin["pg_namespace"];
 
             var triggerfunctionselect = admin
-                .Select(SqlColumn.Concat("schemaandname", pgnamespace["nspname"], ".", pgproc["proname"]), pgnamespace["nspname"], pgproc["proname"]).From(pgproc)
+                .Select(SqlColumn.Concat("schemaandname", pgnamespace["nspname"], SqlColumn.Static("."), pgproc["proname"]), pgnamespace["nspname"], pgproc["proname"]).From(pgproc)
                 .Join(SqlJoinType.Left, pgnamespace, pgproc["pronamespace"], pgnamespace["oid"])
                 .Where(pgproc["proname"] % $"{SqlService.ServiceTriggerFunctionPrefix}%");
 
@@ -254,7 +256,7 @@ OWNER TO {sql.User};
             var triggers = admin["information_schema.triggers"];
 
             var triggertableselect = admin
-                .Select(SqlSelectOptions.Distinct, SqlColumn.Concat("schemaandname", triggers["trigger_schema"], ".", triggers["event_object_table"]), triggers["trigger_schema"], triggers["event_object_table"]).From(triggers)
+                .Select(SqlSelectOptions.Distinct, SqlColumn.Concat("schemaandname", triggers["trigger_schema"], SqlColumn.Static("."), triggers["event_object_table"]), triggers["trigger_schema"], triggers["event_object_table"]).From(triggers)
                 .Where(triggers["trigger_name"] == $"{SqlService.ServiceTrigger}");
 
             var tabletriggers = triggertableselect.Execute().First.ToList<string, string, string>("schemaandname", "trigger_schema", "event_object_table");

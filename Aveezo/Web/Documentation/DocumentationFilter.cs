@@ -7,6 +7,7 @@ using System.Collections.Generic;
 
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -34,16 +35,9 @@ namespace Aveezo
 
                         if (referencedSchema.Description != null && referencedSchema.Description.StartsWith("aveezo:", out string tag))
                         {
-                            if (tag == "filter")
+                            if (tag == "result_array")
                             {
-                                schema.Reference = null;
-                                schema.Type = referencedSchema.Items.Type;
-                                schema.Format = referencedSchema.Items.Format;
-                                schema.Example = referencedSchema.Items.Example;
-                            }
-                            else if (tag == "result_array")
-                            {
-                                //referencedSchema.Description = null;
+                                //referenced;chema.Description = null;
 
                                 if (operation.Tags.Has(typeof(PagingTag)) && /*workaround*/referencedSchema.AdditionalProperties != null)
                                 {
@@ -70,7 +64,6 @@ namespace Aveezo
 
                                 referencedSchema.AdditionalProperties = null;
                                 referencedSchema.AdditionalPropertiesAllowed = false;
-
                             }
                         }
                     }
@@ -99,7 +92,7 @@ namespace Aveezo
 
                         foreach (var (_, propertySchema) in schema.Properties)
                             RemoveSchema(null, propertySchema, repository, active, remove);
-
+                         
                         RemoveSchema(null, schema.AdditionalProperties, repository, active, remove);
                     }
 
@@ -150,21 +143,22 @@ namespace Aveezo
 
         public void Apply(OpenApiSchema schema, SchemaFilterContext context)
         { 
-            var type = context.Type;
+            var type = context.Type;     
 
             if (context.MemberInfo != null)
             {
-                // member
-                var info = context.MemberInfo;
+                // if member
+                var member = context.MemberInfo;
 
-                if (info.Has<HideAttribute>())
+                if (member.MemberType == MemberTypes.Property)
                 {
-                    schema.Description = "aveezo:hide";
+                    if (member.Has<HideAttribute>())
+                        schema.Description = "aveezo:hide";
                 }
             }
             else
             {
-                // classes
+                // if class
 
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Result<>))
                 {
@@ -177,53 +171,20 @@ namespace Aveezo
                         schema.Items = context.SchemaGenerator.GenerateSchema(type.GetElementType(), context.SchemaRepository);
                         schema.AdditionalProperties = context.SchemaGenerator.GenerateSchema(typeof(IPagingResult), context.SchemaRepository);
                         schema.AdditionalPropertiesAllowed = true;
-
-
-                        //schema.Description = "aveezo:result_paging";
-                        //schema.Type = "object";
-                        //schema.AdditionalProperties = context.SchemaGenerator.GenerateSchema(typeof(IPagingResult), context.SchemaRepository);
-                        //schema.AdditionalPropertiesAllowed = true;
-                        //schema.Items = context.SchemaGenerator.GenerateSchema(type.GetElementType(), context.SchemaRepository);
-
-                        //foreach (var (propKey, propSchema) in pagingSchema.Properties)
-                        //    schema.Properties.Add(propKey, new OpenApiSchema());
-                        //schema.Pro
-
-                        // schema.Items = context.SchemaGenerator.GenerateSchema(type.GetElementType(), context.SchemaRepository);
-
-                        //schema.Items = 
-
-                        ///schema.Properties.Add("test", new OpenApiSch)
-
-                        //schema.Type = "array";
-                        //schema.Items = 
-
-                        //paging
-
-
-                        //schema.Type = "array";
-                        //schema.AdditionalPropertiesAllowed = true;
-                        //schema.Items = pagingSchema;
                     }
                     else
                     {
                         var newSchema = context.SchemaGenerator.GenerateSchema(type, context.SchemaRepository);
 
-
                         schema.Reference = newSchema.Reference;
                     }
                 }
-                else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(PropFilter<>))
+                else if (type.IsEnum)
                 {
-                    type = type.GetGenericArguments()[0];
-
-                    schema.Description = "aveezo:filter";
-                    schema.Items = context.SchemaGenerator.GenerateSchema(type, context.SchemaRepository); // nitip di reference items
-
-                    //var newSchema = context.SchemaGenerator.GenerateSchema(type, context.SchemaRepository);
-                    // schema.Type = newSchema.Type;
-                    //schema.Properties = null;
-                    //schema.Example = DocumentationExample.ValueExample(type);
+                    if (type.Name == "InterfaceStatus")
+                    {
+                        schema.Description = "aveezo:enum";
+                    }
                 }
                 else if (type.IsClass)
                 {
@@ -231,7 +192,6 @@ namespace Aveezo
                 }
             }
 
-            /*
             var useCase = ExampleUseCase.None;
             object[] customExample = null;
 
@@ -240,11 +200,11 @@ namespace Aveezo
             {
 
                 if (context.MemberInfo.Has<Base64Attribute>()) useCase = ExampleUseCase.Base64;
-                else if (context.MemberInfo.Has<ExampleAttribute>(out var ea) && ea.Example != null)
-                {
-                    customExample = ea.Example.Array();
-                    useCase = ExampleUseCase.Custom;
-                }
+                //lse if (context.MemberInfo.Has<ExampleAttribute>(out var ea) && ea.Example != null)
+                //{
+                //    customExample = ea.Example.Array();
+                //    useCase = ExampleUseCase.Custom;
+                //}
             }
 
             if (type.IsDictionary(out Type dictionaryKeyType, out Type dictionaryValueType))
@@ -359,11 +319,65 @@ namespace Aveezo
 
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            if (context.MethodInfo.Has<DisabledAttribute>())
+            var method = context.MethodInfo;
+
+
+
+
+            
+
+
+            //return;
+
+            if (method.Has<DisabledAttribute>())
                 operation.Tags.Add(new DisabledTag());
-            else if (ApiParameters.IsPagingResult(context.MethodInfo, out _))
+            else if (ApiService.IsPagingResult(method, out _))
                 operation.Tags.Add(new PagingTag());
 
+            if (ApiService.IsResourceReturnType(method, out var type))
+            {
+                // find schema (for parameter description)
+                Dictionary<string, string> fieldDescriptions = new();
+                var sc = context.SchemaRepository.Schemas;
+
+                if (type.Name == "Interface")
+                {
+
+                }
+
+                if (sc.ContainsKey(type.Name))
+                {
+                    var sce = sc[type.Name];
+                    foreach (var (pkey, psce) in sce.Properties)
+                    {
+                        if (!fieldDescriptions.ContainsKey(pkey))
+                            fieldDescriptions.Add(pkey, psce.Description);
+                    }
+                }
+
+                // create query parameters
+                foreach (var prop in type.GetProperties())
+                {
+                    if (prop.Has<FieldAttribute>(out var fields))
+                    {
+                        var field = fields[0];
+
+                        if (field.Options.HasFlag(FieldOptions.CanQuery))
+                        {
+                            operation.Parameters.Add(new OpenApiParameter
+                            {
+                                Name = field.Name,
+                                In = ParameterLocation.Query,
+                                Schema = context.SchemaGenerator.GenerateSchema(prop.PropertyType, context.SchemaRepository),
+                                Description = fieldDescriptions.ContainsKey(field.Name) ? fieldDescriptions[field.Name] : null
+                            });
+                        }
+
+                        
+                    }
+                }
+            }
+            
             foreach (var parameter in operation.Parameters)
                 ModifySchema(parameter.Schema, parameter, operation, context);
 
@@ -375,17 +389,17 @@ namespace Aveezo
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
             var info = swaggerDoc.Info;
-            var newPaths = new Dictionary<string, OpenApiPathItem>();
-            var removePaths = new List<string>();
 
             if (info != null && info.Version != null)
             {
                 var sp = info.Version.Split(Collections.HyphenMinus);
                 if (sp.Length == 2)
-                {
                     info.Version = sp[0];
-                }
             }
+
+            var newPaths = new Dictionary<string, OpenApiPathItem>(); 
+            var removePaths = new List<string>();
+
 
             var activeSchemas = new List<string>();
             var removeSchemas = new List<string>();
@@ -400,11 +414,11 @@ namespace Aveezo
                 {
                     foreach (var parameter in operation.Parameters)
                     {
-                        if (parameter.Schema.Reference != null)
+                        if (parameter.Schema?.Reference != null)
                         {
                             var referencedSchema = context.SchemaRepository.Schemas[parameter.Schema.Reference.Id];
 
-                            if (referencedSchema.Description == "aveezo:object")
+                            if (referencedSchema.Description.StartsWith("aveezo:object"))
                                 removeParameters.Add(parameter);
                         }
                     }

@@ -6,16 +6,15 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aveezo
+namespace Aveezo;
+
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public class NoCacheAttribute : ResponseCacheAttribute
 {
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public class NoCacheAttribute : ResponseCacheAttribute
+    public NoCacheAttribute()
     {
-        public NoCacheAttribute()
-        {
-            NoStore = true;
-            Duration = 0;
-            Location = ResponseCacheLocation.None;
-        }
+        NoStore = true;
+        Duration = 0;
+        Location = ResponseCacheLocation.None;
     }
 }

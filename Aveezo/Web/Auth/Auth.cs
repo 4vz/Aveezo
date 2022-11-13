@@ -285,5 +285,4 @@ namespace Aveezo
         [Base64]
         public string RefreshToken { get; set; }
     }
-
 }

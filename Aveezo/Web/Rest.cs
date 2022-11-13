@@ -26,7 +26,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Utf8Json;
 using Utf8Json.Resolvers;
-using Utf8Json.AspNetCoreMvcFormatter;
+using LoxSmoke.DocXml;
 
 namespace Aveezo;
 
@@ -107,25 +107,25 @@ public abstract class Rest : App
             options.Filters.Add<ResultFilter>(-99999);
 
             // Input Formatters
-            var via = (SystemTextJsonInputFormatter)options.InputFormatters.Find(typeof(SystemTextJsonInputFormatter));
-            via.SupportedMediaTypes.Clear();
-            via.SupportedMediaTypes.Add("application/json");
+            var systemTextJsonInputFormatter = (SystemTextJsonInputFormatter)options.InputFormatters.Find(typeof(SystemTextJsonInputFormatter));
+            systemTextJsonInputFormatter.SupportedMediaTypes.Clear();
+            systemTextJsonInputFormatter.SupportedMediaTypes.Add("application/json");
 
             options.InputFormatters.Add(new FormInputFormatter());
 
             // Output Formatters
             options.OutputFormatters.RemoveType<StringOutputFormatter>();
 
-            var voa = (SystemTextJsonOutputFormatter)options.OutputFormatters.Find(typeof(SystemTextJsonOutputFormatter));
-            voa.SupportedMediaTypes.Clear();
-            voa.SupportedMediaTypes.Add("application/json");
+            //options.OutputFormatters.RemoveType<SystemTextJsonOutputFormatter>();
+            //options.OutputFormatters.Add(new Utf8JsonOutputFormatter());
+
+            var systemTextJsonOutputFormatter = (SystemTextJsonOutputFormatter)options.OutputFormatters.Find(typeof(SystemTextJsonOutputFormatter));
+            systemTextJsonOutputFormatter.SupportedMediaTypes.Clear();
+            systemTextJsonOutputFormatter.SupportedMediaTypes.Add("application/json");
 
             if (apiOptions.EnableSoapXml)
                 options.AddSoapXml(xmlPrefix, assemblies);
-
         });
-
-
 
         mvcBuilder.ConfigureApiBehaviorOptions(options =>
         {
@@ -143,11 +143,8 @@ public abstract class Rest : App
             options.JsonSerializerOptions.Converters.Add(new PhysicalAddressJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new IPAddressCidrJsonConverter());
             options.JsonSerializerOptions.Converters.Add(new IPAddressJsonConverter());
-
-            var namingPolicy = new NamingPolicy();
-
-            options.JsonSerializerOptions.PropertyNamingPolicy = namingPolicy;
-            options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+            options.JsonSerializerOptions.PropertyNamingPolicy = new NamingPolicy();
+            options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault;
         });
 
         foreach (var assembly in assemblies)
@@ -168,7 +165,7 @@ public abstract class Rest : App
             options.SubstitutionFormat = "S'/v'V";
         });
 
-        if (apiOptions.EnableDocumentation)
+        if (apiOptions.EnableDocs)
         {
             services.AddSwaggerGen(options =>
             {
@@ -179,10 +176,13 @@ public abstract class Rest : App
                 options.MapType<IPAddress>(() => new OpenApiSchema { Type = "string" });
 
                 // Get Xml Comments
-                foreach (var ic in (new DirectoryInfo(AppContext.BaseDirectory)).GetFiles("*.xml"))
+                var files = (new DirectoryInfo(AppContext.BaseDirectory)).GetFiles("*.xml");
+
+                foreach (var file in files)
                 {
-                    var str = File.ReadAllText(ic.FullName);
+                    var str = File.ReadAllText(file.FullName);
                     var valid = false;
+
                     if (!string.IsNullOrEmpty(str) && str.TrimStart().StartsWith("<"))
                     {
                         try
@@ -194,7 +194,9 @@ public abstract class Rest : App
                     }
 
                     if (valid)
-                        options.IncludeXmlComments(ic.FullName, true);
+                    {
+                        var dxl = new DocXmlReader(file.FullName);
+                    }
                 }
 
 
@@ -203,9 +205,9 @@ public abstract class Rest : App
                     options.AddSoapXml(xmlPrefix);
                 }
 
-                options.DocumentFilter<DocumentationFilter>();
-                options.OperationFilter<DocumentationFilter>();
                 options.SchemaFilter<DocumentationFilter>();
+                options.OperationFilter<DocumentationFilter>();
+                options.DocumentFilter<DocumentationFilter>();
 
                 // Get version description                
                 var versionService = provider.GetRequiredService<IApiVersionDescriptionProvider>();
@@ -219,7 +221,7 @@ public abstract class Rest : App
                     {
                         var documentOptions = new OpenApiInfo()
                         {
-                            Title = apiOptions.DocumentationName,
+                            Title = apiOptions.DocsName,
                             Version = description.ApiVersion.ToString(),
 
                             //Description = "A sample application with Swagger, Swashbuckle, and API versioning.",
@@ -274,8 +276,8 @@ public abstract class Rest : App
 
         var groups = GetApiVersionGroups(versionService.ApiVersionDescriptions);
 
-        // Use Documentation
-        if (apiOptions.EnableDocumentation)
+        // Use Documentations
+        if (apiOptions.EnableDocs)
         {
             app.Use(async (context, next) =>
             {
@@ -319,7 +321,6 @@ public abstract class Rest : App
                     endpoint.Add((schemaUrl, gname));
                 }
 
-
                 app.UseSwaggerUI(options =>
                 {
                     options.RoutePrefix = spec;
@@ -329,11 +330,10 @@ public abstract class Rest : App
                         options.SwaggerEndpoint(schemaUrl, gname);
                     }
 
-                    options.DocumentTitle = apiOptions.DocumentationName;
+                    options.DocumentTitle = apiOptions.DocsName;
                     options.SupportedSubmitMethods();
                     options.DefaultModelsExpandDepth(-1);
                 });
-
             }
         }
 

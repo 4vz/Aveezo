@@ -144,7 +144,9 @@ namespace Aveezo
                 return new[] { "No Result" };
         }
 
-        public T[] Builder<T>(Action<SqlPropertyBuilder<T>> propertyBuilder, Action<SqlItemBuilder<T>> itemBuilder)
+        public T[] Builder<T>(Action<SqlPropertyBuilder<T>> propertyBuilder, Action<SqlItemBuilder<T>> itemBuilder) => Builder<T>(propertyBuilder, itemBuilder, null);
+
+        public T[] Builder<T>(Action<SqlPropertyBuilder<T>> propertyBuilder, Action<SqlItemBuilder<T>> itemBuilder, Func<SqlPropertyFormatter, object> propertyFormatter)
         {
             if (Ok && selectBuilders != null && select != null)
             {
@@ -187,6 +189,17 @@ namespace Aveezo
                             if (formattedValue is SqlCell valueCell)
                                 formattedValue = valueCell.GetObject();
                         }
+
+                        var propertyFormatterResult = propertyFormatter?.Invoke(new SqlPropertyFormatter
+                        {
+                            Context = context,
+                            Builder = builder,
+                            Value = cell,
+                            FormattedValue = formattedValue
+                        });
+
+                        if (propertyFormatterResult != null)
+                            formattedValue = propertyFormatterResult;
                         else if (cell != null)
                         {
                             // default formatter
@@ -203,10 +216,6 @@ namespace Aveezo
                         {
                             builder.Binder(item, rowdict, formattedValues);
                         }
-                        else
-                        {
-                            // default binder
-                        }
                     }
 
                     // propertyBuilder
@@ -220,7 +229,8 @@ namespace Aveezo
                                 Context = context,
                                 Builder = builder,
                                 Values = rowdict,
-                                FormattedValues = formattedValues
+                                FormattedValues = formattedValues,
+                                Ext = builder.Ext?.Invoke(formattedValues)
                             });
                         }
                     }
@@ -246,6 +256,36 @@ namespace Aveezo
         #endregion
     }
 
+    public sealed class SqlPropertyFormatter
+    {
+        public Context Context { get; init; }
+
+        public SqlBuilder Builder { get; init; }
+
+        public SqlCell Value { get; init; }
+
+        public object FormattedValue { get; init; }
+    }
+
+    public sealed class SqlPropertyBuilder<T>
+    {
+        public T Item { get; init; }
+
+        public Context Context { get; init; }
+
+        public SqlBuilder Builder { get; init; }
+
+        public Dictionary<string, SqlCell> Values { get; init; }
+
+        public Dictionary<string, object> FormattedValues { get; init; }
+
+        public SqlCell Value => Builder.Name != null ? Values.ContainsKey(Builder.Name) ? Values[Builder.Name] : null : null;
+
+        public object FormattedValue => Builder.Name != null ? Values.ContainsKey(Builder.Name) ? FormattedValues[Builder.Name] : null : null;
+
+        public object Ext { get; init; }
+    }
+
     public sealed class SqlItemBuilder<T>
     {
         public T Item { get; init; }
@@ -257,20 +297,4 @@ namespace Aveezo
         public Dictionary<string, object> FormattedValues { get; init; }
     }
 
-    public sealed class SqlPropertyBuilder<T>
-    {
-        public T Item { get; init; }
-
-        public Context Context { get; init; }
-
-        public SqlBuilder Builder { get; init; }
-
-        public Dictionary<string, SqlCell> Values { get; init; }        
-        
-        public Dictionary<string, object> FormattedValues { get; init; }
-
-        public SqlCell Value => Builder.Name != null ? Values.ContainsKey(Builder.Name) ? Values[Builder.Name] : null : null;
-
-        public object FormattedValue => Builder.Name != null ? Values.ContainsKey(Builder.Name) ? FormattedValues[Builder.Name] : null : null;
-    }
 }

@@ -44,9 +44,9 @@ namespace Aveezo
 
         public string WsdlDomain { get; set; } = "aveezo.io";
 
-        public bool EnableDocumentation { get; set; } = false;
+        public bool EnableDocs { get; set; } = false;
 
-        public string DocumentationName { get; set; } = "Aveezo API";
+        public string DocsName { get; set; } = "Aveezo API";
 
         public string RoutePrefix { get; set; } = "/docs/api";
 

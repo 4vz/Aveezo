@@ -33,7 +33,7 @@ namespace Aveezo
 
         public (string, bool)[] Sorts { get; init; } = null; 
         
-        public (string, (string, string)[])[] Queries { get; init; } = null;
+        public (string, (string, Values<string>)[])[] Queries { get; init; } = null;
 
         public string[] Fields { get; init; } = null;
 
@@ -43,17 +43,7 @@ namespace Aveezo
 
         #region Statics
 
-        public static bool IsPagingResult(MethodInfo methodInfo, out Type arrayType)
-        {
-            arrayType = null;
-            if (methodInfo != null && !methodInfo.Has<NoPagingAttribute>() && methodInfo.ReturnType != null && methodInfo.ReturnType.IsAssignableToGenericType(typeof(Result<>), out Type[] rtype) && rtype[0].IsArray)
-            {
-                arrayType = rtype[0];
-                return true;
-            }
-            else
-                return false;
-        }
+
 
         #endregion
     }

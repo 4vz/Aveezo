@@ -278,8 +278,9 @@ namespace Aveezo
                 return default;
             else
             {
-                // numeric
-                if (to == typeof(sbyte))
+                if (to == typeof(bool))
+                    val = GetNullableBool();
+                else if (to == typeof(sbyte))
                     val = GetNullableSbyte();
                 else if (to == typeof(byte))
                     val = GetNullableByte();
@@ -295,6 +296,8 @@ namespace Aveezo
                     val = GetNullableLong();
                 else if (to == typeof(ulong))
                     val = GetNullableUlong();
+                else if (to == typeof(char))
+                    val = GetNullableChar();
                 else if (to == typeof(float))
                     val = GetNullableFloat();
                 else if (to == typeof(double))

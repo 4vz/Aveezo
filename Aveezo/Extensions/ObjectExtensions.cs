@@ -39,39 +39,40 @@ namespace Aveezo
 
         public static bool Contains<T>(this T[] array, T find) => array.Find(t => find != null && find.Equals(t)) != null;
 
-        public static TResult[] Invoke<TResult>(this Array array, Func<object, TResult> cast)
+        public static TResult[] Invoke<TResult>(this Array array, Func<object, TResult> f)
         {
             var list = new List<TResult>();
 
             foreach (var t in array)
             {
-                list.Add(cast(t));
+                list.Add(f(t));
             }
 
             return list.ToArray();
         }
 
-        public static TResult[] Invoke<T, TResult>(this T[] array, Func<T, TResult> cast)
+        public static TResult[] Invoke<T, TResult>(this T[] array, Func<T, TResult> f)
         {
             var list = new List<TResult>();
 
             foreach (var t in array)
             {
-                list.Add(cast(t));
+                list.Add(f(t));
             }
 
             return list.ToArray();
         }
 
-        public static TResult Format<T, TResult>(this T x, Func<T, TResult> f) => x is null ? default : f(x);
+        public static TResult Invoke<T, TResult>(this T x, Func<T, TResult> f) => x is null ? default : f(x);
 
-        public static TResult Format<T, TResult>(this T x, Func<T, TResult> f, TResult ifnull) => x is null ? ifnull : f(x);
+        public static TResult Invoke<T, TResult>(this T x, Func<T, TResult> f, TResult ifnull) => x is null ? ifnull : f(x);
 
-        public static string Format<T>(this T x, string format) => x.Format(o => string.Format(format, o));
+        public static string Format<T>(this T x, string format) => x.Invoke(o => string.Format(format, o));
 
         public static T Cast<T>(this object value)
         {
             value.TryCast<T>(out var cast);
+
             return cast;
         }
 
@@ -83,33 +84,41 @@ namespace Aveezo
                 cast = variable;
             else
             {
-                var to = typeof(T);
-                object casted = null;
+                notExcepted = value.TryCast(typeof(T), out object icast);
+                cast = (T)icast;
+            }
 
-                if (casted == null && to == typeof(IPAddress))
-                {
-                    if (value is string str && IPAddress.TryParse(str, out var ipAddress))
-                        casted = ipAddress;
-                }
+            return notExcepted;
+        }
 
-                try
+        public static bool TryCast(this object value, Type to, out object cast)
+        {
+            bool notExcepted = true;
+            object casted = null;
+
+            if (casted == null && to == typeof(IPAddress))
+            {
+                if (value is string str && IPAddress.TryParse(str, out var ipAddress))
+                    casted = ipAddress;
+            }
+
+            try
+            {
+                if (casted != null)
+                    cast = Convert.ChangeType(casted, to);
+                else
                 {
-                    if (casted != null)
-                        cast = (T)Convert.ChangeType(casted, typeof(T));
+                    //Handling Nullable types i.e, int?, double?, bool? .. etc
+                    if (Nullable.GetUnderlyingType(to) != null)
+                        cast = TypeDescriptor.GetConverter(to).ConvertFrom(value);
                     else
-                    {
-                        //Handling Nullable types i.e, int?, double?, bool? .. etc
-                        if (Nullable.GetUnderlyingType(typeof(T)) != null)
-                            cast = (T)TypeDescriptor.GetConverter(typeof(T)).ConvertFrom(value);
-                        else
-                            cast = (T)Convert.ChangeType(value, typeof(T));
-                    }
+                        cast = Convert.ChangeType(value, to);
                 }
-                catch (Exception)
-                {
-                    notExcepted = false;
-                    cast = default;
-                }
+            }
+            catch (Exception)
+            {
+                notExcepted = false;
+                cast = default;
             }
 
             return notExcepted;

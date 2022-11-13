@@ -41,7 +41,7 @@ namespace Aveezo
 
         public override string DefaultSchema => null;
 
-        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample({table.TableSample})" : "")}{table.Alias.Format(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample({table.TableSample})" : "")}{table.Alias.Invoke(s => $" {s}")}";
 
         public override string FormatSelectLimit(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, SqlSelectOptions options)
         {

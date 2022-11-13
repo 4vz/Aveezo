@@ -22,6 +22,18 @@ namespace Aveezo
 
         public static bool Has<T>(this IEnumerable<T> value, Type type) => value.Find(type) != null;
 
+        public static bool Has<T>(this IEnumerable<T> value, Predicate<T> a)
+        {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            
+            foreach (var v in value)
+            {
+                if (a(v))
+                    return true;
+            }
+            return false;
+        }
+
         public static IEnumerable<T> Keep<T>(this IEnumerable<T> value, Predicate<T> keep)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));

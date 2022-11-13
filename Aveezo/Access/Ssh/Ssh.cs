@@ -1,7 +1,7 @@
 ﻿using Renci.SshNet;
 using System;
 using System.Collections.Generic;
-
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,13 +14,21 @@ namespace Aveezo
 
         private Task main = null;
 
-        public string Host { get; set; }
+        public IPAddress Host { get; set; }
 
         public string User { get; set; }
 
         public string Password { get; set; }
 
         public bool IsStarted { get; private set; } = false;
+
+        public uint ShellColumns { get; init; } = 80;
+
+        public uint ShellRows { get; init; } = 40;
+
+        public uint ShellWidth { get; init; } = 800;
+
+        public uint ShellHeight { get; init; } = 600;
 
         private SshClient client = null;
 
@@ -67,6 +75,14 @@ namespace Aveezo
 
         }
 
+        public Ssh(uint shellColumns, uint shellRows, uint shellWidth, uint shellHeight)
+        {
+            ShellColumns = shellColumns;
+            ShellRows = shellRows; 
+            ShellWidth = shellWidth;
+            ShellHeight = shellHeight;
+        }
+
         #endregion
 
         #region Methods
@@ -84,12 +100,17 @@ namespace Aveezo
                         client.Dispose();
                     }
 
-                    await OnBeforeConnect();
                     BeforeConnect?.Invoke(this, new EventArgs());
 
-                    client = new SshClient(Host, User, Password);
+                    if (Host == null)
+                        throw new Exception("AVEEZO:Host not specified");
+                    if (User == null)
+                        throw new Exception("AVEEZO:User not specified");
+                    if (Password == null)
+                        throw new Exception("AVEEZO:Password not specified");
 
-                    await OnConnecting();
+                    client = new SshClient(Host.ToString(), User, Password);
+
                     Connecting?.Invoke(this, new EventArgs());
 
                     client.Connect();
@@ -104,18 +125,17 @@ namespace Aveezo
                         "Permission denied (password)." => SshConnectionFailReason.AuthenticationFailed,
                         _ => SshConnectionFailReason.Unknown
                     }, ex.Message);
-                    await OnConnectionFail(connectionFailArgs);
+
                     ConnectionFail?.Invoke(this, connectionFailArgs);
                 }
 
                 if (IsConnected)
                 {
-                    Stream = client.CreateShellStream("", 80, 40, 80, 40, 1024);
+                    Stream = client.CreateShellStream("", ShellColumns, ShellRows, ShellWidth, ShellHeight, 1024);
                    
                     //client.Session.ChannelCloseReceived += SessionCloseReceived;
                     //client.Session.ChannelDataReceived += SessionDataReceived;
 
-                    await OnConnected();
                     Connected?.Invoke(this, new EventArgs());
 
                     LastDataTimeStamp = DateTime.Now;
@@ -125,7 +145,7 @@ namespace Aveezo
 
                     while (IsConnected)
                     {
-                        mainLoopWait.WaitOne(1000);
+                        mainLoopWait.WaitOne(500);
                         
                         if (beingDisconnected)
                         {
@@ -138,20 +158,16 @@ namespace Aveezo
                                 LastDataTimeStamp = DateTime.Now;
                                 alreadyReceivingData = true;
 
-                                await OnDataAvailable();
                                 DataAvailable?.Invoke(this, new EventArgs());
                             }
                             else if (alreadyReceivingData)
                             {
-                                await OnIdle();
                                 Idle?.Invoke(this, new EventArgs());
                             }
                         }
                     }
 
-                    await OnDisconnecting();
                     Disconnecting?.Invoke(this, new EventArgs());
-                    
 
                     //if (client.Session != null)
                     //{
@@ -162,7 +178,6 @@ namespace Aveezo
                     Stream.Dispose();
                     Stream = null;
 
-                    await OnDisconnected();
                     Disconnected?.Invoke(this, new EventArgs());
                 }
 
@@ -170,16 +185,10 @@ namespace Aveezo
                 {
                     var reconnectingArgs = new SshReconnectingEventArgs { Reconnect = true };
 
-                    await OnReconnecting(reconnectingArgs);
-                    if (reconnectingArgs.Reconnect)
-                    {
-                        Reconnecting?.Invoke(this, reconnectingArgs);
+                    Reconnecting?.Invoke(this, reconnectingArgs);
 
-                        if (reconnectingArgs.Reconnect)
-                            await Task.Delay(ReconnectDelay);
-                        else
-                            break;
-                    }
+                    if (reconnectingArgs.Reconnect)
+                        await Task.Delay(ReconnectDelay);
                     else
                         break;
                 }
@@ -211,7 +220,7 @@ namespace Aveezo
             }
         }
 
-        public async Task Start(string host, string user, string password)
+        public async Task Start(IPAddress host, string user, string password)
         {
             Host = host;
             User = user;
@@ -255,28 +264,5 @@ namespace Aveezo
         }
 
         #endregion
-
-        #region Virtuals
-
-        protected virtual async Task OnBeforeConnect() { }
-
-        protected virtual async Task OnConnecting() { }
-
-        protected virtual async Task OnConnectionFail(SshConnectionFailEventArgs e) { }
-
-        protected virtual async Task OnConnected() { }
-
-        protected virtual async Task OnDataAvailable() { }
-
-        protected virtual async Task OnIdle() { }
-
-        protected virtual async Task OnDisconnecting() { }
-
-        protected virtual async Task OnDisconnected() { }
-
-        protected virtual async Task OnReconnecting(SshReconnectingEventArgs e) { }
-
-        #endregion
-
     }
 }

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Aveezo
 {
@@ -26,30 +27,24 @@ namespace Aveezo
 
         #endregion
 
-        #region Operators
-
-
-        #endregion
-
         #region Methods
 
         public Task BindModelAsync(ModelBindingContext bindingContext)
         {
             var action = bindingContext.ActionContext.ActionDescriptor as ControllerActionDescriptor;
+            var method = action.MethodInfo;
 
-            if (action.MethodInfo.Has<SqlAttribute>(out var sqlAttributes))
+            if (method.Has<SqlAttribute>(out var sqlAttributes))
             {
-                if (action.MethodInfo.HasGenericAttributes<ResourceAttribute<Resource>>(out var resourceAttributes))
+                var sql = provider.GetService<IDatabaseService>().Sql(sqlAttributes[0].Name);
+
+                if (sql)
                 {
-                    var sql = provider.GetService<IDatabaseService>().Sql(sqlAttributes[0].Name);
-
-                    if (sql)
+                    if (ApiService.IsResourceReturnType(method, out Type type))
                     {
-                        var restype = resourceAttributes[0].Type.GetGenericArguments()[0];
-
-                        if (Activator.CreateInstance(restype) is Resource resource)
+                        if (Activator.CreateInstance(type) is Resource resource)
                         {
-                            Func<object[], SqlSelect> sqlSelect = parameters => resource.Select(sql, parameters);
+                            Func<Parameters, SqlSelect> sqlSelect = parameters => resource.Select(sql, parameters);
 
                             bindingContext.Result = ModelBindingResult.Success(new ApiSelect()
                             {
@@ -66,6 +61,8 @@ namespace Aveezo
         #endregion
 
         #region Statics
+
+
 
         #endregion
 

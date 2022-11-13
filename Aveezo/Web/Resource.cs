@@ -17,17 +17,18 @@ public abstract class Resource
     /// Id in Base64-URL encoded.
     /// </summary>
     [JsonPropertyOrder(-1)]
-    [Field(Sql.Id, FieldOptions.Always | FieldOptions.HideInFields)]
+    [Field(Sql.Id, FieldOptions.Always | FieldOptions.HideInFields | FieldOptions.Encoded)]
     public string Id { get; set; }
 
     [Hide]
-    public Dictionary<string, ResourceLink> _Links { get; set; }
+    [JsonPropertyName("_links")]
+    public Dictionary<string, ResourceLink> Links { get; set; }
 
     #endregion
 
     #region Method
 
-    public virtual SqlSelect Select(Sql sql, object[] parameters)
+    public virtual SqlSelect Select(Sql sql, Parameters parameters)
     {
         return null;
     }

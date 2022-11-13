@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
@@ -12,15 +12,15 @@ using System.Threading.Tasks;
 
 #if DEBUG
 
-namespace Aveezo.Providers.Test.V1;
+namespace Aveezo.Providers.TestObject.V1;
 
 /// <summary>
 /// Here's the summary of the test API
 /// </summary>
 [Path("test/api")]
-public class TestApi : Api
+public class TestObject : Api
 {
-    public TestApi(IServiceProvider i) : base(i) { }
+    public TestObject(IServiceProvider i) : base(i) { }
 
     /// <summary>
     /// Get and Post the Test API
@@ -93,6 +93,10 @@ public class TestApiSimpleObject
 
 public class TestApiRequestObject
 {
+    /// <summary>
+    /// Summary dari field ini
+    /// </summary>
+
     public string Data { get; set; } = "DEFAULT";
 }
 

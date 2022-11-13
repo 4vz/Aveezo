@@ -7,8 +7,6 @@ using System.Text;
 
 namespace Aveezo
 { 
-
-
     public class SqlCondition
     {
         #region Fields
@@ -44,17 +42,9 @@ namespace Aveezo
 
         internal SqlCondition() { }
 
-        private static SqlCondition Conjunction(SqlCondition condition1, SqlConjunctionOperator conjunction, SqlCondition condition2)
-        {
-            if (condition1 is not null && condition2 is not null)
-                return new SqlCondition(condition1, conjunction, condition2);
-            else if (condition1 is not null)
-                return condition1;
-            else if (condition2 is not null)
-                return condition2;
-            else
-                return null;
-        }
+        #endregion
+
+        #region Operators
 
         public static SqlCondition operator &(SqlCondition condition1, SqlCondition condition2) => Conjunction(condition1, SqlConjunctionOperator.And, condition2);
 
@@ -99,6 +89,25 @@ namespace Aveezo
         public static SqlCondition operator >=(SqlCondition column, object value) => new((SqlColumn)column, SqlComparasionOperator.GreaterThanOrEqualTo, value);
 
         //public static implicit operator SqlCondition(bool value) => new(value);
+        #endregion
+
+        #region Methods
+
+        private static SqlCondition Conjunction(SqlCondition condition1, SqlConjunctionOperator conjunction, SqlCondition condition2)
+        {
+            if (condition1 is not null && condition2 is not null)
+                return new SqlCondition(condition1, conjunction, condition2);
+            else if (condition1 is not null)
+                return condition1;
+            else if (condition2 is not null)
+                return condition2;
+            else
+                return null;
+        }
+
+        public static SqlCondition False => new SqlCondition(false);
+
+        public static SqlCondition True => new SqlCondition(true);
 
         public override bool Equals(object obj)
         {

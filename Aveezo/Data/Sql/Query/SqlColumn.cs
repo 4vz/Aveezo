@@ -85,29 +85,41 @@ public class SqlColumn : SqlCondition
 
     public static SqlColumn Concat(string alias, params SqlColumn[] columns)
     {
-        var column = new SqlColumn(SqlColumnOperation.Concat, columns);
-        column.Alias = alias;
+        var column = new SqlColumn(SqlColumnOperation.Concat, columns)
+        {
+            Alias = alias
+        };
         return column;
     }
 
     public static SqlColumn Static(object value)
     {
-        var col = new SqlColumn(null, "", null);
-        col.IsValue = true;
-        col.Value = value;
+        var col = new SqlColumn(null, "", null)
+        {
+            IsValue = true,
+            Value = value
+        };
         return col;
     }
 
     public static SqlColumn Static(object value, string alias)
     {
-        var col = new SqlColumn(null, "", alias);
-        col.IsValue = true;
-        col.Value = value;
+        var col = new SqlColumn(null, "", alias)
+        {
+            IsValue = true,
+            Value = value
+        };
         return col;
     }
 
+    /// <summary>
+    /// Only used for SqlColumn select, not for condition.
+    /// </summary>
     public static SqlColumn Null => Static(null);
 
+    /// <summary>
+    /// Only used for SqlColumn select, not for condition.
+    /// </summary>
     public static SqlColumn Empty => Static("");
 
     #endregion

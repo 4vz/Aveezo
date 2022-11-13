@@ -62,7 +62,7 @@ namespace Aveezo
 
         #region Methods
 
-        public override string ToString()
+        public string ToCidrString()
         {
             return $"{base.ToString()}/{(int)Prefix}";
         }

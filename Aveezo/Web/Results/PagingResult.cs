@@ -13,6 +13,8 @@ namespace Aveezo
         int Count { get; set; }
 
         int Offset { get; set; }
+
+        string[] Fields { get; set; }
     }
 
     public class PagingResult<T> : IPagingResult
@@ -28,15 +30,6 @@ namespace Aveezo
         public string[] Fields { get; set; } = null;
 
         public T Result { get; set; }
-
-        #endregion
-
-        #region Constructors
-
-        public PagingResult()
-        {
-
-        }
 
         #endregion
     }

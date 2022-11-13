@@ -7,10 +7,30 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-
 namespace Aveezo;
 
-public abstract partial class App
+public interface IApp
+{
+    public void Event(string[] messages);
+
+    public void Event(string message);
+
+    public void Event(string[] messages, string label);
+
+    public void Event(string message, string label);
+
+    public void Event(string[] messages, string label, string subLabel);
+
+    public void Event(string message, string label, string subLabel);
+
+    public void Error(string[] messages, string label);
+
+    public void Error(string message, string label);
+
+    public void Error(Exception exception, string label);
+}
+
+public abstract partial class App : IApp
 {
     #region Fields
 
@@ -62,16 +82,22 @@ public abstract partial class App
             var success = args.Success;
             var exception = args.Exception;
 
+            Event($"INFO: {sql.DatabaseType} ", name);
+
             if (success)
             {
-                Event($"Database OK: {sql.DatabaseType} {(!string.IsNullOrEmpty(sql.Database) ? $"{sql.Database}:" : "")}{sql.User}", name);
+                Event($"OK: {(!string.IsNullOrEmpty(sql.Database) ? $"{sql.Database}:" : "")}{sql.User}", name);
             }
             else
             {
                 if (exception != null)
-                    Event($"Database FAILED: {exception.Message}", name);
+                    Event($"FAILED: {exception.Message}", name);
                 else
-                    Event($"Database FAILED", name);
+                    Event($"FAILED", name);
+
+#if DEBUG
+                Event($"STRING: {sql.Connection.ConnectionString}", name);
+#endif
             }
         }
     }
@@ -87,6 +113,7 @@ public abstract partial class App
         var configRequiredPassed = true;
 
         Event("Checking for main config file...", "CONFIG");
+
         if (ConfigFile != null)
         {
             if (ConfigRequired)
