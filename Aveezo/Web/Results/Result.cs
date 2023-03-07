@@ -29,7 +29,7 @@ namespace Aveezo
 
         public static implicit operator Result<T>(PagingResult<T> result) => new(new ObjectResult(result));
 
-        // return Result<T[]> dari Query
+        // return Result<TResult[]> dari Request
         public static implicit operator Result<T>(Result<T[]> resultArray)
         {
             if (resultArray.ActionResult is ObjectResult ores)

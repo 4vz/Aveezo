@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Renci.SshNet.Security;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,15 +11,9 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
 
 namespace Aveezo;
-
-internal enum SqlExecuteType
-{
-    Reader,
-    Scalar,
-    Execute
-}
 
 [ModelBinder(typeof(SqlBinder))]
 public sealed class Sql
@@ -39,6 +34,8 @@ public sealed class Sql
 
     public string Database { get => Connection.Database; }
 
+    public string DefaultSchema { get => Connection.DefaultSchema; }
+
     public string IP { get; } = null;
 
     public int Timeout { get; set; } = 30;
@@ -49,7 +46,18 @@ public sealed class Sql
 
     public SqlException LastException { get; private set; } = null;
 
+    // schema, table, primarykey
+    private Dictionary<string, Dictionary<string, SqlTableDefinition>> schemaTableDefinitions = null;
+
+
+
+
     private readonly Dictionary<string, string> primaryKeys = new Dictionary<string, string>();
+
+
+
+
+
 
     private readonly Dictionary<Type, (string, string, string[], List<(PropertyInfo, string, SqlColumnOptions, Dictionary<object, object>)>)> tableAttributes = new Dictionary<Type, (string, string, string[], List<(PropertyInfo, string, SqlColumnOptions, Dictionary<object, object>)>)>();
 
@@ -77,8 +85,6 @@ public sealed class Sql
     public (SqlTable, SqlTable, SqlTable, SqlTable, SqlTable, SqlTable, SqlTable, SqlTable) this[string name1, string name2, string name3, string name4, string name5, string name6, string name7, string name8]
         => (new(name1), new(name2), new(name3), new(name4), new(name5), new(name6), new(name7), new(name8));
 
-
-
     #endregion
 
     #region Events
@@ -99,7 +105,7 @@ public sealed class Sql
         Name = $"Sql:{name}";
 
         if (connectionString == null)
-            throw new ArgumentNullException("connectionString");
+            throw new ArgumentNullException(nameof(connectionString));
 
         DatabaseType = databaseType;
 
@@ -159,11 +165,14 @@ public sealed class Sql
     {
         if (exception != null)
         {
-            var databaseException = new SqlException(exception, sql);
-            databaseException.Type = Connection.ParseMessage(exception.Message);
-            Exception?.Invoke(this, new SqlExceptionEventArgs(databaseException));
-            result.Exception = databaseException;
+            var databaseException = new SqlException(exception, sql)
+            {
+                Type = Connection.ParseMessage(exception.Message)
+            };
 
+            Exception?.Invoke(this, new SqlExceptionEventArgs(databaseException));
+
+            result.Exception = databaseException;
             LastException = databaseException;
         }
     }
@@ -180,7 +189,7 @@ public sealed class Sql
             // quick and dirty to fix "order by" keyword
             if (order != null)
             {
-                // there should be no "order by" keyword in the sql
+                // there should be no "order by" keyword in the Sql
                 if (sql.ToLower().IndexOf("order by") > -1)
                 {
                     query.Exception = new SqlException(new InvalidOperationException(), sql);
@@ -189,7 +198,7 @@ public sealed class Sql
             }
             else
             {
-                // there should be "order by" keyword in the sql
+                // there should be "order by" keyword in the Sql
                 if (sql.ToLower().IndexOf("order by") == -1)
                 {
                     query.Exception = new SqlException(new InvalidOperationException(), sql);
@@ -284,11 +293,17 @@ public sealed class Sql
             return null;
     }
 
+    //public SqlSelectProto Select(params string[] columns) => Select(columns.Each(s => (SqlColumn)s));
+
     public SqlSelectProto Select(params SqlColumn[] columns) => Select(SqlSelectOptions.None, columns);
 
-    public SqlSelectProto Select(SqlSelectOptions options, params SqlColumn[] columns) => new SqlSelectProto(this, options, columns);
+    public SqlSelectProto Select() => Select(SqlSelectOptions.None);
+
+    public SqlSelectProto Select(SqlSelectOptions options, params SqlColumn[] columns) => new(this, options, columns);
 
     public SqlSelect SelectFrom(SqlTable table) => Select().From(table);
+
+    public SqlSelect SelectFrom(SqlSelect select) => Select().From(select);
 
     public SqlSelect SelectBuilder<T>(SqlTable table, Action<SqlBuilderAdd<T>> add) where T : class
     {
@@ -315,20 +330,88 @@ public sealed class Sql
         return rc;
     }
 
-    public string GetPrimaryKey(string table)
+    public bool IsSchemaExists(string schema)
     {
-        string keyName = null;
-
-        if (table != null)
+        if (schemaTableDefinitions == null)
         {
-            if (primaryKeys.ContainsKey(table)) keyName = primaryKeys[table];
-            else if (Connection.GetPrimaryKeyColumn(table, out keyName)) primaryKeys.Add(table, keyName);
+            schemaTableDefinitions = new Dictionary<string, Dictionary<string, SqlTableDefinition>>();
+            
+            var schemas = Connection.GetSchemas();
+            foreach (var s in schemas) schemaTableDefinitions.Add(s, null);
         }
 
-        return keyName;
+        if (schemaTableDefinitions.ContainsKey(schema))
+            return true;
+        else
+            return false;
     }
 
-    public bool IsTableExists(string table) => Connection.IsTableExists(table);
+    public bool IsTableExists(SqlTable table)
+    {
+        var schema = table.Schema;
+        var name = table.Name;
+
+        if (IsSchemaExists(schema))
+        {
+            var schemaDefinition = schemaTableDefinitions[schema];
+
+            if (schemaDefinition == null)
+            {
+                schemaDefinition = new Dictionary<string, SqlTableDefinition>();
+                schemaTableDefinitions[schema] = schemaDefinition;
+
+                var tables = Connection.GetTables(schema);
+                foreach (var t in tables) schemaDefinition.Add(t.Name, null);
+            }
+
+            if (schemaDefinition.ContainsKey(name))
+                return true;
+            else
+                return false;
+
+        }
+        else
+            return false;
+    }
+
+    public SqlTableDefinition GetTableDefinition(SqlTable table)
+    {
+        if (IsTableExists(table))
+        {
+            var tableDefinition = schemaTableDefinitions[table.Schema][table.Name];
+
+            if (tableDefinition == null)
+            {
+                tableDefinition = Connection.GetDefinition(table);
+                schemaTableDefinitions[table.Schema][table.Name] = tableDefinition;
+            }
+
+            return tableDefinition;
+        }
+        else
+            return null;
+    }
+
+    public string[] GetPrimaryKeys(SqlTable table)
+    {
+        var tableDefinition = GetTableDefinition(table);
+
+        if (tableDefinition != null)
+        {
+            var cols = tableDefinition.Columns;
+            var pks = new List<string>();
+
+            foreach (var col in cols)
+            {
+                if (col.IsPrimaryKey)
+                    pks.Add(col.Name);
+            }
+
+            return pks.ToArray();
+        }
+        else
+            return null;
+    }
 
     public SqlInsertTable Insert(string table, params string[] columns) => table != null ? new SqlInsertTable(this, table, columns) : null;
 
@@ -342,21 +425,51 @@ public sealed class Sql
 
     public SqlDeleteTable Delete(SqlTable table, string whereColumn) => table != null ? new SqlDeleteTable(this, table, whereColumn) : null;
 
-    public Dictionary<T, U> SelectToDictionary<T, U>(SqlTable table, string columnNameAsValue) => SelectToDictionary<T, U>(table, GetPrimaryKey(table.Name), columnNameAsValue);
+    #region SelectToDictionary
 
-    public Dictionary<T, U> SelectToDictionary<T, U>(SqlTable table, string columnNameAsKey, string columnNameAsValue)
+    public Dictionary<T, U> SelectToDictionary<T, U>(SqlTable table, SqlColumn key, SqlColumn value)
     {
         if (table == null) throw new ArgumentNullException(nameof(table));
-        if (columnNameAsKey == null) throw new ArgumentNullException(nameof(columnNameAsKey));
-        if (columnNameAsValue == null) throw new ArgumentNullException(nameof(columnNameAsValue));
+        if (key == null) throw new ArgumentNullException(nameof(key));
+        if (value == null) throw new ArgumentNullException(nameof(value));
 
         Dictionary<T, U> dictionary = null;
 
-        if (table != null && columnNameAsKey != null && columnNameAsValue != null)
-        {
-            if (SelectFrom(table).Where(columnNameAsKey, columnNameAsValue).Execute(out SqlResult result))
-                dictionary = result.ToDictionary<T, U>(columnNameAsKey, columnNameAsValue, null);
-        }
+        if (Select(key, value).From(table).Execute(out SqlResult result))
+            dictionary = result.ToDictionary<T, U>(key.Name, value.Name, null);
+
+        return dictionary;
+    }
+
+    public Dictionary<T, SqlRow> SelectToDictionary<T>(SqlTable table, SqlCondition where, SqlOrder order)
+    {
+        if (table == null) throw new ArgumentNullException(nameof(table));
+
+        var pks = GetPrimaryKeys(table);
+        if (pks == null) throw new NullReferenceException($"Cannot determined {table}'s primary keys.");
+        if (pks.Length == 0) throw new NullReferenceException($"The {table} table has no primary key constraint.");
+        if (pks.Length > 1) throw new InvalidCastException($"The {table} table is using composite primary key, you might use SelectToDictionary method.");
+
+        Dictionary<T, SqlRow> dictionary = null;
+
+        if (SelectFrom(table).Where(where).OrderBy(order).Execute(out SqlResult result))
+            dictionary = result.ToDictionary<T>(pks[0]);
+
+        return dictionary;
+    }
+
+    public Dictionary<string, SqlRow> SelectToDictionary(SqlTable table, SqlCondition where, SqlOrder order)
+    {
+        if (table == null) throw new ArgumentNullException(nameof(table));
+
+        var pks = GetPrimaryKeys(table);
+        if (pks == null) throw new NullReferenceException($"Cannot determined {table}'s primary keys.");
+        if (pks.Length == 0) throw new NullReferenceException($"The {table} table has no primary key constraint.");
+
+        Dictionary<string, SqlRow> dictionary = null;
+
+        if (SelectFrom(table).Where(where).OrderBy(order).Execute(out SqlResult result))
+            dictionary = result.ToDictionary(pks);
 
         return dictionary;
     }
@@ -367,29 +480,38 @@ public sealed class Sql
 
     public Dictionary<T, SqlRow> SelectToDictionary<T>(SqlTable table, SqlOrder order) => SelectToDictionary<T>(table, null, order);
 
-    public Dictionary<T, SqlRow> SelectToDictionary<T>(SqlTable table, SqlCondition where, SqlOrder order)
+    public Dictionary<string, SqlRow> SelectToDictionary(SqlTable table) => SelectToDictionary(table, null, null);
+
+    public Dictionary<string, SqlRow> SelectToDictionary(SqlTable table, SqlCondition where) => SelectToDictionary(table, where, null);
+
+    public Dictionary<string, SqlRow> SelectToDictionary(SqlTable table, SqlOrder order) => SelectToDictionary(table, null, order);
+
+    #endregion
+
+    #region SelectToList
+
+    public List<T> SelectToList<T>(SqlTable table, SqlColumn column, SqlCondition where, SqlOrder order, SqlSelectOptions options)
     {
-        Dictionary<T, SqlRow> dictionary = null;
+        if (table == null) throw new ArgumentNullException(nameof(table));
 
-        if (table != null)
-        {
-            var pk = GetPrimaryKey(table.Name);
-            if (pk == null) throw new NullReferenceException($"Cannot determined {table.Name}'s primary key as dictionary key");
+        List<T> list = null;
 
-            var se = SelectFrom(table);
+        if (Select(options, column).From(table).Where(where).OrderBy(order).Execute(out SqlResult result))
+            list = result.ToList<T>(column.Name);
 
-            if (where is not null)
-                se.WhereCondition = where;
+        return list;
+    }
 
-            se.Order = order;
+    public List<SqlRow> SelectToList(SqlTable table, SqlCondition where, SqlOrder order, SqlSelectOptions options)
+    {
+        if (table == null) throw new ArgumentNullException(nameof(table));
 
-            var rc = se.Execute();
+        List<SqlRow> list = null;
 
-            if (rc.Ok)
-                dictionary = rc.First.ToDictionary<T>(pk);
-        }
+        if (Select(options).From(table).Where(where).OrderBy(order).Execute(out SqlResult result))
+            list = result.ToList<SqlRow>();
 
-        return dictionary;
+        return list;
     }
 
     public List<T> SelectToList<T>(SqlTable table, SqlColumn column) => SelectToList<T>(table, column, null, null);
@@ -400,30 +522,6 @@ public sealed class Sql
 
     public List<T> SelectToList<T>(SqlTable table, SqlColumn column, SqlCondition where, SqlOrder order) => SelectToList<T>(table, column, where, order, SqlSelectOptions.None);
 
-    public List<T> SelectToList<T>(SqlTable table, SqlColumn column, SqlCondition where, SqlOrder order, SqlSelectOptions options)
-    {
-        List<T> list = null;
-
-        if (table != null)
-        {
-            var se = Select(column).From(table);
-
-            se.Options = options;
-
-            if (where is not null)
-                se.WhereCondition = where;
-
-            se.Order = order;
-
-            var rc = se.Execute();
-
-            if (rc.Ok)
-                list = rc.First.ToList<T>(column.Name);
-        }
-
-        return list;
-    }
-
     public List<SqlRow> SelectToList(SqlTable table) => SelectToList(table, null, null);
 
     public List<SqlRow> SelectToList(SqlTable table, SqlCondition where) => SelectToList(table, where, null);
@@ -432,30 +530,9 @@ public sealed class Sql
 
     public List<SqlRow> SelectToList(SqlTable table, SqlCondition where, SqlOrder order) => SelectToList(table, where, order, SqlSelectOptions.None);
 
-    public List<SqlRow> SelectToList(SqlTable table, SqlCondition where, SqlOrder order, SqlSelectOptions options)
-    {
-        List<SqlRow> list = null;
+    #endregion
 
-        if (table != null)
-        {
-            var se = SelectFrom(table);
-
-            se.Options = options;
-
-            if (where is not null)
-                se.WhereCondition = where;
-
-            if (order is not null)
-                se.Order = order;
-
-            var rc = se.Execute();
-
-            if (rc.Ok)
-                list = rc.First.ToList();
-        }
-
-        return list;
-    }
+    // soon...
 
     public SqlBucket<T> Collection<T>() where T : SqlBucketData, new() => new(this);
 
@@ -466,7 +543,7 @@ public sealed class Sql
         var info = SqlBucketData.GetInfo(typeof(T));
 
         var table = new SqlTable(info.Table);
-        var select = Select(info.Columns.Invoke((column) => table[column])).From(table);
+        var select = Select(info.Columns.Each((column) => table[column])).From(table);
         select.WhereCondition = where;
         var rs = select.Execute().First;
 

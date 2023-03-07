@@ -28,13 +28,13 @@ namespace Aveezo
 
         #region Methods
 
-        public string FormatReturning(bool output) => output ? " returning *" : "";
+        private string FormatReturning(bool output) => output ? " returning *" : "";
 
         // Virtual
 
-        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.Invoke(s => $" as \"{s}\"")}";
+        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.IfNotNull(s => $" as \"{s}\"")}";
 
-        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample system({table.TableSample})" : "")}{table.Alias.Invoke(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample system({table.TableSample})" : "")}{table.Alias.IfNotNull(s => $" {s}")}";
 
         public override Type OverrideType(Type type)
         {
@@ -44,35 +44,15 @@ namespace Aveezo
 
         public override string FormatInsertEnd(SqlTable table, string[] columns, bool output) => FormatReturning(output);
 
-        public override string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatWhere(where)}{FormatReturning(output)}";
+        public override string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {FormatTable(table)} set {set}{FormatWhere(where)}{FormatReturning(output)}";
 
         public override string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
 
-        public override string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatWhere(where)}{FormatReturning(output)}";
+        public override string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {FormatTable(table)}{FormatWhere(where)}{FormatReturning(output)}";
 
-        public override string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table.Ident} where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
+        public override string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {FormatTable(table)} where {whereColumn} in {FormatQuery(whereKeys)}{FormatReturning(output)}";
 
         // Abstract
-
-        public override bool GetPrimaryKeyColumn(SqlTable table, out string columnName)
-        {
-            columnName = null;
-
-            var result = new SqlQuery();
-
-            Query(@$"
-SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-WHERE i.indrelid = '{table.Name}'::regclass AND i.indisprimary;
-", result, SqlExecuteType.Reader, out _, 10000);
-
-            if (result)
-            {
-                columnName = result[0][0]["attname"].GetString();
-                return true;
-            }
-            else
-                return false;
-        }
 
         public override void Use(string database, object connection) => throw new NotSupportedException();
 
@@ -126,7 +106,7 @@ WHERE i.indrelid = '{table.Name}'::regclass AND i.indisprimary;
 
         public override bool GetIsDBNull(object reader, int ordinal) => ((NpgsqlDataReader)reader).IsDBNull(ordinal);
 
-        public override Type GetFieldType(object reader, int ordinal) => ((NpgsqlDataReader)reader).GetFieldType(ordinal);
+        public override Type GetFieldType(object reader, int ordinal) => ((NpgsqlDataReader)reader).GetFieldType(ordinal); 
 
         public override object GetValue(object reader, Type type, int ordinal)
         {
@@ -169,13 +149,57 @@ WHERE i.indrelid = '{table.Name}'::regclass AND i.indisprimary;
             return SqlExceptionType.Unspecified;
         }
 
-        public override void OnServiceCreated(SqlService service)
+        public override void Service(SqlService service, string serviceSchema, SqlTable[] tables)
         {
-            var sql = service.sql;
+            var sql = service.Sql;
             var admin = sql.Admin;
 
-            admin.Execute($@"
-CREATE TABLE {DefaultSchema}.{SqlService.ServiceTable}
+            var registers = new List<(string, string, string, string, string)>();
+
+            // DB DATA
+            var pgproc = admin["pg_catalog.pg_proc"];
+            var pgnamespace = admin["pg_catalog.pg_namespace"];
+            var triggers = admin["information_schema.triggers"];
+
+            var currentTriggerFunctions = admin
+                .Select(SqlColumn.Concat("schemaandname", pgnamespace["nspname"], SqlColumn.Static("."), pgproc["proname"]), pgnamespace["nspname"], pgproc["proname"])
+                .From(pgproc)
+                .Join(SqlJoinType.Left, pgnamespace, pgproc["pronamespace"], pgnamespace["oid"])
+                .Where(pgproc["proname"] % $"{SqlService.ServiceIdent}%")
+                .Execute()
+                .First.ToList<string, string, string>("schemaandname", "nspname", "proname");
+
+            var currentTriggers = admin
+                .Select(SqlSelectOptions.Distinct, SqlColumn.Concat("schemaandname", triggers["trigger_schema"], SqlColumn.Static("."), triggers["event_object_table"]), triggers["trigger_schema"], triggers["event_object_table"]).From(triggers)
+                .Where(triggers["trigger_name"] == $"{SqlService.ServiceIdent}")
+                .Execute()
+                .First.ToList<string, string, string>("schemaandname", "trigger_schema", "event_object_table");
+
+            // CHECK SERVICE TABLE
+
+            var a = 1;
+
+
+
+            /*
+
+            // ADD TRIGGER FUNCTIONS
+            foreach (var table in tables)
+            {
+                var schema = table.Schema;
+                var tableFullName = FormatTable(table);
+                var name = table.Name;
+                var function = $"{SqlService.ServiceTriggerFunctionPrefix}{name}";
+
+
+                var schemaFunction = $"{schema}.{function}";
+                var schemaServiceTable = $"{schema}.{SqlService.ServiceTable}";
+
+                // ADD SERVICE TABLE
+                if (!sql.IsTableExists(schemaServiceTable))
+                {
+                    admin.Execute($@"
+CREATE TABLE {schemaServiceTable}
 (
     {SqlService.ServiceColumnId} bigint NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 9223372036854775807 CACHE 1 ),
     {SqlService.ServiceColumnTimestamp} timestamp without time zone NOT NULL DEFAULT now(),
@@ -185,116 +209,66 @@ CREATE TABLE {DefaultSchema}.{SqlService.ServiceTable}
 
 TABLESPACE pg_default;
 
-ALTER TABLE {DefaultSchema}.{SqlService.ServiceTable}
+ALTER TABLE {schemaServiceTable}
     OWNER to {sql.User};
 ");
-        }
-
-        public override void OnServiceStarted(SqlService service, string[] registers)
-        {
-            var sql = service.sql;
-            var admin = sql.Admin;
-
-            var pgproc = admin["pg_proc"];
-            var pgnamespace = admin["pg_namespace"];
-
-            var triggerfunctionselect = admin
-                .Select(SqlColumn.Concat("schemaandname", pgnamespace["nspname"], SqlColumn.Static("."), pgproc["proname"]), pgnamespace["nspname"], pgproc["proname"]).From(pgproc)
-                .Join(SqlJoinType.Left, pgnamespace, pgproc["pronamespace"], pgnamespace["oid"])
-                .Where(pgproc["proname"] % $"{SqlService.ServiceTriggerFunctionPrefix}%");
-
-            var regs = new List<(string, string, string, string, string)>();
-
-            var rc = triggerfunctionselect.Execute();
-
-            var triggerfunctions = rc.First.ToList<string, string, string>("schemaandname", "nspname", "proname");
-
-            foreach (var reg in registers)
-            {
-                var dotindex = reg.IndexOf('.');
-                string schema, table;
-
-                if (dotindex > -1)
-                {
-                    schema = reg.Substring(0, dotindex);
-                    table = reg.Substring(dotindex + 1);
-                }
-                else
-                {
-                    schema = sql.Connection.DefaultSchema;
-                    table = reg;
+                    service.Event($"Added table {schemaServiceTable}");
                 }
 
-                var function = $"{SqlService.ServiceTriggerFunctionPrefix}{table}";
-                var schemafunction = $"{schema}.{function}";
-                var schematable = $"{schema}.{table}";
+                registers.Add((schemaFunction, tableFullName, schema, function, name));
 
-                regs.Add((schemafunction, schematable, schema, function, table));
-
-                if (!triggerfunctions.ToITuple().Contains(schemafunction, 0))
-                {
-                    admin.Execute($@"
-CREATE FUNCTION {schemafunction}()
-RETURNS trigger
-LANGUAGE 'plpgsql'
-COST 100
-VOLATILE NOT LEAKPROOF
-AS $BODY$
+                // create tup function if not
 BEGIN
-insert into {SqlService.ServiceTable}(s_tag) values('{table}');
+insert into {schemaServiceTable}(s_tag) values('{name}');
 return new;
 END
 $BODY$;
-
-ALTER FUNCTION {schemafunction}()
+ALTER FUNCTION {schemaFunction}()
 OWNER TO {sql.User};
 ");
-                    service.Event($"Added {schemafunction}");
+                    service.Event($"Added function {schemaFunction}");
                 }
             }
 
-            var triggers = admin["information_schema.triggers"];
-
-            var triggertableselect = admin
-                .Select(SqlSelectOptions.Distinct, SqlColumn.Concat("schemaandname", triggers["trigger_schema"], SqlColumn.Static("."), triggers["event_object_table"]), triggers["trigger_schema"], triggers["event_object_table"]).From(triggers)
-                .Where(triggers["trigger_name"] == $"{SqlService.ServiceTrigger}");
-
-            var tabletriggers = triggertableselect.Execute().First.ToList<string, string, string>("schemaandname", "trigger_schema", "event_object_table");
-
-            foreach (var (schemafunction, schematable, _, _, _) in regs)
+            // ADD TRIGGER
+            foreach (var (schemaFunction, schemaName, _, _, _) in registers)
             {
-                if (!tabletriggers.ToITuple().Contains(schematable, 0))
+                if (!currentTriggers.ToITuple().Contains(schemaName, 0))
                 {
                     admin.Execute($@"
 CREATE TRIGGER {SqlService.ServiceTrigger}
 AFTER INSERT OR DELETE OR UPDATE 
-ON {schematable}
+ON {schemaName}
 FOR EACH ROW
-EXECUTE PROCEDURE {schemafunction}();
+EXECUTE PROCEDURE {schemaFunction}();
 ");
-                    service.Event($"Added {SqlService.ServiceTrigger} on {schematable}");
+                    service.Event($"Added trigger {SqlService.ServiceTrigger} on {schemaName}");
                 }
             }
 
-            foreach (var tabletrigger in tabletriggers)
+            // DELETE TRIGGERS
+            foreach (var tup in currentTriggers)
             {
-                if (!regs.ToITuple().Contains(tabletrigger.Item1, 1))
+                if (!registers.ToITuple().Contains(tup.Item1, 1))
                 {
-                    var schematable = tabletrigger.Item1;
-                    admin.Execute($"DROP TRIGGER {SqlService.ServiceTrigger} ON {schematable}");
-                    service.Event($"Removed {SqlService.ServiceTrigger} on {schematable}");
+                    var schemaName = tup.Item1;
+                    admin.Execute($"DROP TRIGGER {SqlService.ServiceTrigger} ON {schemaName}");
+                    service.Event($"Removed trigger {SqlService.ServiceTrigger} on {schemaName}");
                 }
             }
 
-            foreach (var triggerfunction in triggerfunctions)
+            // DELETE TRIGGER FUNCTIONS
+
+            foreach (var tup in currentTriggerFunctions)
             {
-                if (!regs.ToITuple().Contains(triggerfunction.Item1, 0))
+                if (!registers.ToITuple().Contains(tup.Item1, 0))
                 {
-                    var schemafunction = triggerfunction.Item1;
+                    var schemafunction = tup.Item1;
                     admin.Execute($"DROP FUNCTION {schemafunction}()");
-                    service.Event($"Removed {schemafunction}");
+                    service.Event($"Removed function {schemafunction}");
                 }
             }
+            */
         }
 
         #endregion

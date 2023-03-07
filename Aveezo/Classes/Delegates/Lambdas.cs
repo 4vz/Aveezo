@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aveezo
-{
-    public delegate T Modifier<T>(T input);
-}
+namespace Aveezo;
+
+public delegate bool Predicate();
+
+public delegate T Lambdas<T>(T input);

@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Renci.SshNet.Messages;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Aveezo
 {
@@ -9,87 +11,71 @@ namespace Aveezo
         #region Fields
 
         private string lastEventMessage = null;
+
         private string lastEventLabel = null;
-        private string lastEventSubLabel = null;
 
         private int lastEventRepeat = 0;
 
         private object eventSync = new object();
 
+        private int errorCounter = 0;
+
+        public int ErrorCounter => errorCounter;
+
         #endregion
 
         #region Methods
 
-        public void Event(string[] messages)
+        // events
+
+        public Task Event(string message) => Event(message.Array(), null);
+
+        public Task Event(string[] messages) => Event(messages, null);
+
+        public Task Event(string message, string label) => Event(message.Array(), label);
+
+        public async Task Event(string[] messages, string label)
         {
             if (messages == null) return;
 
             foreach (var message in messages)
             {
-                Event(message, null, null);
-            }
-        }
-
-        public void Event(string message) => Event(message, null, null);
-
-        public void Event(string[] messages, string label)
-        {
-            if (messages == null) return;
-
-            foreach (var message in messages)
-            {
-                Event(message, label, null);
-            }
-        }
-
-        public void Event(string message, string label) => Event(message, label, null);
-
-        public void Event(string[] messages, string label, string subLabel)
-        {
-            if (messages == null) return;
-
-            foreach (var message in messages)
-            {
-                Event(message, label, subLabel);
-            }
-        }
-
-        public void Event(string message, string label, string subLabel)
-        {
-            if (message != null)
-            {
-                lock (eventSync)
+                if (message != null)
                 {
-                    lastEventRepeat = (message == lastEventMessage && label == lastEventLabel && subLabel == lastEventSubLabel) ? (lastEventRepeat + 1) : 0;
-                    lastEventMessage = message;
-                    lastEventLabel = label;
-                    lastEventSubLabel = subLabel;
+                    lock (eventSync)
+                    {
+                        lastEventRepeat = (message == lastEventMessage && label == lastEventLabel) ? (lastEventRepeat + 1) : 0;
+                        lastEventMessage = message;
+                        lastEventLabel = label;
 
-                    string eventMessage = $"{DateTime.UtcNow:yyyy/MM/dd:HH:mm:ss.fff}|{(label != null ? $"{label}{(subLabel != null ? $">{subLabel}" : "")}" : "")}|{message}";
+                        string eventMessage = $"{DateTime.UtcNow:yyyy/MM/dd:HH:mm:ss.fff}|{label ?? ""}|{message}";
 
-                    OnEvent(eventMessage, lastEventRepeat);
+                        OnEvent(eventMessage, lastEventRepeat);
+                    }
                 }
             }
         }
 
-        public void Error(string[] messages, string label)
-        {
-            if (messages == null) return;
+        // errors
 
-            foreach (var message in messages)
-            {
-                Event(message, label, "ERROR");
-            }
+        public Task Error(string message) => Error(message.Array(), null);
+
+        public Task Error(string[] messages) => Error(messages, null);
+
+        public Task Error(string message, string label) => Error(message.Array(), label);
+
+        public async Task Error(string[] messages, string label)
+        {
+            if (messages != null) errorCounter += messages.Length;
+
+            Event(messages, $"ERROR{(label != null ? $"#{label}" : "")}");
         }
 
-        public void Error(string message, string label) => Event(message, label, "ERROR");
+        // exception errors
 
-        public void Error(Exception exception, string label)
-        {
-            if (exception == null) return;
+        public Task Error(Exception exception) => Error(exception?.Message);
 
-            Error(exception.Message, label);
-        }
+        public Task Error(Exception exception, string label) => Error(exception?.Message, label);
 
         #endregion
     }

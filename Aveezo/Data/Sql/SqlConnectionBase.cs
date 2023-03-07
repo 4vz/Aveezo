@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Aveezo
 {
@@ -437,8 +438,8 @@ namespace Aveezo
                 if (column.OperationColumns != null)
                 {
                     var sb = new StringBuilder("concat(");
-                    sb.Append(column.OperationColumns.Invoke(o => FormatColumn(o, canAlias)).Filter(s => s is not null).Join(", "));
-                    sb.Append(")");
+                    sb.Append(column.OperationColumns.Each(o => FormatColumn(o, canAlias)).Filter(s => s is not null).Join(", "));
+                    sb.Append(')');
                     return sb.ToString();
                 }
                 else
@@ -522,10 +523,11 @@ namespace Aveezo
                 return null;
         }
 
-
         #endregion
 
         #region Virtuals
+
+        public virtual string DefaultSchema => "public";
 
         public virtual string NullValue => "null";
 
@@ -535,17 +537,17 @@ namespace Aveezo
 
         public virtual string FalseValue => "FALSE";
 
-        public virtual string DefaultSchema => "public";
-
         public virtual string TestStatement => "select 1";
 
         public virtual string OrderByNull => "order by (select null)";
 
+        public virtual string FormatEntity(string entity) => $"{entity}";
+
         public virtual string FormatFrom(string from) => $"from {from}";
 
-        public virtual string FormatWhere(string where) => where.Invoke(s => $"where {s}");
+        public virtual string FormatWhere(string where) => where.IfNotNull(s => $"where {s}");
 
-        public virtual string FormatOrder(string order) => order.Invoke(s => $"order by {s}");
+        public virtual string FormatOrder(string order) => order.IfNotNull(s => $"order by {s}");
 
         public virtual string FormatColumn(SqlColumn column) => FormatColumn(column, false);
 
@@ -553,17 +555,17 @@ namespace Aveezo
             canAlias && column.Alias != null ? column.Alias :
             column.IsValue ? FormatValue(column.Value) :
             column.Operation != SqlColumnOperation.None ? FormatColumnOperations(column, canAlias) :
-            $"{column.Table.Invoke(table => $"{table.Alias}.")}{column.Name}";
+            $"{column.Table.IfNotNull(table => $"{table.Alias}.")}{column.Name}";
 
-        public virtual string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column, false)}{column.Alias.Invoke(s => $" as '{s}'")}";
+        public virtual string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column, false)}{column.Alias.IfNotNull(s => $" as '{s}'")}";
 
         public virtual string FormatWhere(SqlColumn column) => $"{FormatColumn(column, true)}";
 
-        public virtual string FormatFromWithSchemaOrNot(SqlTable table) => $"{table.Schema.Invoke(schema => $"{schema}.")}{table.Name}";
+        public virtual string FormatTable(SqlTable table) => $"{table.Schema.IfNotNull(schema => $"{FormatEntity(schema)}.")}{FormatEntity(table.Name)}";
 
-        public virtual string FormatFromStatementOrTable(SqlTable table) => table.IsStatement ? $"({table.Name})" : FormatFromWithSchemaOrNot(table);
+        public virtual string FormatFromStatementOrTable(SqlTable table) => table.IsStatement ? $"({table.Name})" : FormatTable(table);
 
-        public virtual string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{table.Alias.Invoke(s => $" as '{s}'")}";
+        public virtual string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{table.Alias.IfNotNull(s => $" as '{s}'")}";
 
         public virtual string FormatNumber(object number) => number.ToString();
 
@@ -577,8 +579,10 @@ namespace Aveezo
 
         public virtual Type OverrideType(Type type) => type;
 
-        public virtual void Query(string sql, SqlQuery resultCollection, SqlExecuteType queryType, out Exception exception, int commandTimeout)
+        public virtual void Query(string sql, SqlQuery query, SqlExecuteType queryType, out Exception exception, int commandTimeout)
         {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+
             using IDisposable connection = GetConnection();
 
             using IDisposable command = GetCommand(sql, connection, commandTimeout);
@@ -615,7 +619,7 @@ namespace Aveezo
                                 var columnCount = GetReaderFieldCount(reader);
                                 var columnNames = new List<string>();
                                 var columnTypes = new List<Type>();
-                                var columnIndex = new Dictionary<string, int>();
+                                var columnIndexes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase); // index only keep the first column name if multiple case have been found
 
                                 for (var i = 0; i < columnCount; i++)
                                 {
@@ -623,15 +627,15 @@ namespace Aveezo
                                     columnNames.Add(name);
                                     columnTypes.Add(OverrideType(GetFieldType(reader, i)));
 
-                                    if (!columnIndex.ContainsKey(name))
-                                        columnIndex.Add(name, i);
+                                    if (!columnIndexes.ContainsKey(name))
+                                        columnIndexes.Add(name, i);
                                 }
 
                                 var result = new SqlResult(sql, queryType)
                                 {
                                     ColumnNames = columnNames.ToArray(),
                                     ColumnTypes = columnTypes.ToArray(),
-                                    ColumnIndex = columnIndex
+                                    ColumnIndexes = columnIndexes
                                 };
 
                                 while (ReaderRead(reader))
@@ -646,7 +650,7 @@ namespace Aveezo
                                     result.Add(new SqlRow(result, cells.ToArray()));
                                 }
 
-                                resultCollection.Add(result);
+                                query.Add(result);
 
                                 ReaderNextResult(reader);
                             }
@@ -675,7 +679,7 @@ namespace Aveezo
                         var result = new SqlResult(sql, queryType);   
                         result.Add(new SqlRow(result, new[] { new SqlCell(value.GetType(), value) }));
                         
-                        resultCollection.Add(result);
+                        query.Add(result);
 
                     }
                     catch (Exception rex)
@@ -687,7 +691,7 @@ namespace Aveezo
                 {
                     try
                     {
-                        resultCollection.Add(new SqlResult(sql, queryType) { affectedRows = GetExecuteNonQuery(command) });
+                        query.Add(new SqlResult(sql, queryType) { affectedRows = GetExecuteNonQuery(command) });
                     }
                     catch (Exception rex)
                     {
@@ -756,25 +760,97 @@ namespace Aveezo
                 return false;
         }
 
-        public virtual string FormatInsertIntoValues(SqlTable table, string[] columns, bool output) => $"insert into {table.Ident}{(columns.Length > 0 ? $"({columns.Join(", ")})" : "")} values";
+        public virtual string FormatInsertIntoValues(SqlTable table, string[] columns, bool output) => $"insert into {FormatTable(table)}{(columns.Length > 0 ? $"({columns.Join(", ")})" : "")} values";
 
         public virtual string FormatInsertValuesEntry(SqlInsertTableEntry entry, bool output) => $"{FormatQuery(entry)}";
 
         public virtual string FormatInsertEnd(SqlTable table, string[] columns, bool output) => null;
 
-        public virtual string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatWhere(where)}";
+        public virtual string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {FormatTable(table)} set {set}{FormatWhere(where)}";
 
         public virtual string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $" where {whereColumn} in {FormatQuery(whereKeys)}";
 
-        public virtual string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatWhere(where)}";
+        public virtual string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {FormatTable(table)}{FormatWhere(where)}";
 
-        public virtual string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table.Ident} where {whereColumn} in {FormatQuery(whereKeys)}";
+        public virtual string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {FormatTable(table)} where {whereColumn} in {FormatQuery(whereKeys)}";
+
+        public virtual string[] GetSchemas()
+        {
+            var query = new SqlQuery();
+
+            Query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA", query, SqlExecuteType.Reader, out _, 10000);
+
+            if (query)
+                return query.First.ToList<string>("SCHEMA_NAME").ToArray();
+            else
+                return null;
+        }
+
+        public virtual SqlTable[] GetTables(string schema)
+        {
+            var query = new SqlQuery();
+
+            schema ??= DefaultSchema;
+
+            if (schema == null) throw new ArgumentNullException(nameof(schema));
+
+            Query($"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{schema}'", query, SqlExecuteType.Reader, out _, 10000);
+
+            if (query)
+                return query.First.ToList<string>("TABLE_NAME").ToList(o => new SqlTable($"{schema}.{o}")).ToArray();
+            else
+                return null;
+        }
+
+        public virtual SqlTableDefinition GetDefinition(SqlTable table)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (table.Schema == null) throw new ArgumentNullException(nameof(table.Schema));
+
+            var query = new SqlQuery();
+
+            Query($@"
+SELECT C.COLUMN_NAME, C.IS_NULLABLE, CASE WHEN PK.COLUMN_NAME IS NOT NULL THEN 'YES' ELSE 'NO' END AS IS_PRIMARYKEY
+FROM INFORMATION_SCHEMA.COLUMNS C
+LEFT JOIN(
+SELECT KU.TABLE_CATALOG, KU.TABLE_SCHEMA, KU.TABLE_NAME, KU.COLUMN_NAME
+FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KU ON TC.CONSTRAINT_TYPE = 'PRIMARY KEY' AND TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
+) PK ON C.TABLE_CATALOG = PK.TABLE_CATALOG   AND C.TABLE_SCHEMA = PK.TABLE_SCHEMA AND C.TABLE_NAME = PK.TABLE_NAME AND C.COLUMN_NAME = PK.COLUMN_NAME
+WHERE C.TABLE_SCHEMA = '{table.Schema}' and C.TABLE_NAME = '{table.Name}'", query, SqlExecuteType.Reader, out _, 10000);
+
+            if (query)
+            {
+                var cols = new List<SqlColumnDefinition>();
+
+                foreach (var row in query.First)
+                {
+                    var name = row["COLUMN_NAME"].GetString();
+                    var nullable = row["IS_NULLABLE"].GetString();
+                    var primarykey = row["IS_PRIMARYKEY"].GetString();
+
+                    var col = new SqlColumnDefinition()
+                    {
+                        Name = name,
+                        IsNullable = nullable == "YES",
+                        IsPrimaryKey = primarykey == "YES"
+                    };
+
+                    cols.Add(col);
+                }
+
+                return new SqlTableDefinition()
+                {
+                    Columns = cols.ToArray()
+                };
+            }
+            else
+                return null;
+        }
 
         #endregion
 
         #region Abstracts
-
-        public abstract bool GetPrimaryKeyColumn(SqlTable table, out string columnName);
 
         public abstract void Use(string database, object connection);
 
@@ -816,9 +892,7 @@ namespace Aveezo
 
         public abstract SqlExceptionType ParseMessage(string message);
 
-        public abstract void OnServiceCreated(SqlService service);
-
-        public abstract void OnServiceStarted(SqlService service, string[] registers);
+        public abstract void Service(SqlService service, string serviceSchema, SqlTable[] tables);
 
         #endregion
     }

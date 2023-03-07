@@ -26,7 +26,7 @@ namespace Aveezo
     {
         public static string ToString(this PhysicalAddress value, string separator)
         {
-            var spec = value.GetAddressBytes().Invoke(o => o.ToString("X2").ToUpper());
+            var spec = value.GetAddressBytes().Each(o => o.ToString("X2").ToUpper());
             return spec.Join(separator);
         }
 

@@ -6,19 +6,19 @@ using System.Threading.Tasks;
 
 namespace Aveezo
 {
-    public class ServiceAliveEventArgs : EventArgs
+    public class ShellRequestingEventArgs : EventArgs
     {
         #region Fields
 
-        public bool Alive { get; set; } = false;
+        public string RequestString { get; }
 
         #endregion
 
         #region Constructors
 
-        public ServiceAliveEventArgs()
+        public ShellRequestingEventArgs(string requestString)
         {
-
+            RequestString = requestString;  
         }
 
         #endregion

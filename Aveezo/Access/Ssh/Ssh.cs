@@ -70,9 +70,8 @@ namespace Aveezo
 
         #region Constructors
 
-        public Ssh()
+        public Ssh() : this(80, 40, 800, 600)
         {
-
         }
 
         public Ssh(uint shellColumns, uint shellRows, uint shellWidth, uint shellHeight)
@@ -100,7 +99,7 @@ namespace Aveezo
                         client.Dispose();
                     }
 
-                    BeforeConnect?.Invoke(this, new EventArgs());
+                    BeforeConnect?.Invoke(this);
 
                     if (Host == null)
                         throw new Exception("AVEEZO:Host not specified");
@@ -111,7 +110,7 @@ namespace Aveezo
 
                     client = new SshClient(Host.ToString(), User, Password);
 
-                    Connecting?.Invoke(this, new EventArgs());
+                    Connecting?.Invoke(this);
 
                     client.Connect();
                 }
@@ -136,7 +135,7 @@ namespace Aveezo
                     //client.Session.ChannelCloseReceived += SessionCloseReceived;
                     //client.Session.ChannelDataReceived += SessionDataReceived;
 
-                    Connected?.Invoke(this, new EventArgs());
+                    Connected?.Invoke(this);
 
                     LastDataTimeStamp = DateTime.Now;
                     beingDisconnected = false;
@@ -158,16 +157,16 @@ namespace Aveezo
                                 LastDataTimeStamp = DateTime.Now;
                                 alreadyReceivingData = true;
 
-                                DataAvailable?.Invoke(this, new EventArgs());
+                                DataAvailable?.Invoke(this);
                             }
                             else if (alreadyReceivingData)
                             {
-                                Idle?.Invoke(this, new EventArgs());
+                                Idle?.Invoke(this);
                             }
                         }
                     }
 
-                    Disconnecting?.Invoke(this, new EventArgs());
+                    Disconnecting?.Invoke(this);
 
                     //if (client.Session != null)
                     //{
@@ -178,7 +177,7 @@ namespace Aveezo
                     Stream.Dispose();
                     Stream = null;
 
-                    Disconnected?.Invoke(this, new EventArgs());
+                    Disconnected?.Invoke(this);
                 }
 
                 if (IsReconnect)

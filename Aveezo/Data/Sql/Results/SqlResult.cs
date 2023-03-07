@@ -7,8 +7,6 @@ using System.Threading.Tasks;
 
 namespace Aveezo
 {
-    public delegate T KeyCallback<T>(SqlRow row);
-
     public delegate void KeyDuplicateEventHandler<T>(T key, SqlRow row);
 
     public sealed class SqlResult : IPrintable, IEnumerable<SqlRow>
@@ -27,13 +25,13 @@ namespace Aveezo
 
         private readonly List<SqlRow> rows = null;
 
-        private List<SqlRow> emptyRows = null;
+        private readonly List<SqlRow> emptyRows = null;
 
         public string[] ColumnNames { get; init; } = null;
 
         public Type[] ColumnTypes { get; init; } = null;
 
-        internal Dictionary<string, int> ColumnIndex { get; init; } = null;
+        public Dictionary<string, int> ColumnIndexes { get; init; }
 
         public SqlRow First => (Type == SqlExecuteType.Reader || Type == SqlExecuteType.Scalar) && Count > 0 ? this[0] : null;
 
@@ -122,6 +120,10 @@ namespace Aveezo
         }
 
         public Type GetType(string column) => ColumnNames.Contains(column) ? ColumnTypes[ColumnNames.IndexOf(column)] : null;
+
+        public int GetColumnIndex(string column) => ColumnIndexes.TryGetValue(column, out var index) ? index : -1;
+
+        public bool ContainsColumn(string column) => ColumnIndexes.ContainsKey(column);
 
         private T Get<T>(SqlRow row, string column) => row[column] == null ? default : row[column].Get<T>();
 
@@ -215,7 +217,7 @@ namespace Aveezo
             return list;
         }
 
-        public Dictionary<T, SqlRow> ToDictionary<T>(KeyCallback<T> key, KeyDuplicateEventHandler<T> duplicate)
+        public Dictionary<T, SqlRow> ToDictionary<T>(Func<SqlRow, T> key, KeyDuplicateEventHandler<T> duplicate)
         {
             if (Type == SqlExecuteType.Reader)
             {
@@ -249,52 +251,82 @@ namespace Aveezo
                 return null;
         }
 
-        public Dictionary<T, SqlRow> ToDictionary<T>(string columnNameAsKey, KeyDuplicateEventHandler<T> duplicate)
+        public Dictionary<string, SqlRow> ToDictionary(string[] keys, KeyDuplicateEventHandler<string> duplicate)
         {
-            if (Type == SqlExecuteType.Reader)
+            if (Type == SqlExecuteType.Reader && ColumnNames != null && keys != null && ColumnNames.Contains(keys))
             {
-                if (ColumnNames != null)
+                return ToDictionary(row =>
                 {
-                    if (columnNameAsKey != null)
+                    // the dictkey will be composited from keys
+
+                    var key = new StringBuilder();
+
+                    foreach (var columnName in keys)
                     {
-                        if (ColumnNames.Contains(columnNameAsKey))
-                            return ToDictionary((SqlRow row) => row[columnNameAsKey].Get<T>(), duplicate);
-                        else
-                            return null;
+                        key.Append(row[columnName].GetString());
                     }
-                    else
-                        return null;
-                }
-                else
-                    return null;
+
+                    return key.ToString();
+
+                }, duplicate);
             }
             else
                 return null;
         }
 
-        public Dictionary<T, U> ToDictionary<T, U>(string columnNameAsKey, string columnNameAsValue, KeyDuplicateEventHandler<T> duplicate)
+        public Dictionary<T, SqlRow> ToDictionary<T>(string key, KeyDuplicateEventHandler<T> duplicate)
         {
-            var dict = ToDictionary(columnNameAsKey, duplicate);
+            if (Type == SqlExecuteType.Reader && ColumnNames != null && key != null && ColumnNames.Contains(key))
+                return ToDictionary(row => row[key].Get<T>(), duplicate);
+            else
+                return null;
+        }
+
+        public Dictionary<string, U> ToDictionary<U>(string[] keys, string value, KeyDuplicateEventHandler<string> duplicate)
+        {
+            var dict = ToDictionary(keys, duplicate);
 
             var ok = false;
-            var ndict = new Dictionary<T, U>();
+            var ndict = new Dictionary<string, U>();
 
-            foreach (var (key, row) in dict)
+            foreach (var (dictkey, row) in dict)
             {
                 if (ok == false)
                 {
-                    if (row.ContainsKey(columnNameAsValue)) ok = true;
+                    if (row.ContainsColumn(value)) ok = true;
                     else break;
                 }
-                ndict.Add(key, row[columnNameAsValue].Get<U>());
+                ndict.Add(dictkey, row[value].Get<U>());
             }
 
             return ndict;
         }
 
-        public Dictionary<T, SqlRow> ToDictionary<T>(KeyCallback<T> key) => ToDictionary(key, null);
+        public Dictionary<T, U> ToDictionary<T, U>(string key, string value, KeyDuplicateEventHandler<T> duplicate)
+        {
+            var dict = ToDictionary(key, duplicate);
 
-        public Dictionary<T, SqlRow> ToDictionary<T>(string columnNameAsKey) => ToDictionary<T>(columnNameAsKey, null);
+            var ok = false;
+            var ndict = new Dictionary<T, U>();
+
+            foreach (var (dictkey, row) in dict)
+            {
+                if (ok == false)
+                {
+                    if (row.ContainsColumn(value)) ok = true;
+                    else break;
+                }
+                ndict.Add(dictkey, row[value].Get<U>());
+            }
+
+            return ndict;
+        }
+
+        public Dictionary<T, SqlRow> ToDictionary<T>(Func<SqlRow, T> key) => ToDictionary(key, null);
+
+        public Dictionary<string, SqlRow> ToDictionary(string[] keys) => ToDictionary(keys, null);
+
+        public Dictionary<T, SqlRow> ToDictionary<T>(string key) => ToDictionary<T>(key, null);
 
         public T[] To<T>(Func<SqlRow, T> create)
         {

@@ -1,26 +1,29 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Library</OutputType>
     <TargetFramework>net7.0</TargetFramework>
     <AssemblyName>aveezo</AssemblyName>
     <RootNamespace>Aveezo</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <LangVersion>preview</LangVersion>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants />
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
-    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\_VisualStudio\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
@@ -46,10 +49,9 @@
 
   <ItemGroup>
     <Folder Include="Access\Ssh\Unix\" />
+    <Folder Include="Classes\EventArgs\" />
     <Folder Include="Data\NoSql\" />
     <Folder Include="Extensions\System.Net\" />
   </ItemGroup>
-
-
 
 </Project>

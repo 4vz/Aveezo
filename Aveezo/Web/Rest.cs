@@ -27,6 +27,7 @@ using Microsoft.AspNetCore.Authorization;
 using Utf8Json;
 using Utf8Json.Resolvers;
 using LoxSmoke.DocXml;
+using System.Threading;
 
 namespace Aveezo;
 
@@ -38,7 +39,9 @@ public abstract class Rest : App
 
     private readonly ApiOptions apiOptions = new();
 
-    protected string DatabaseConfigName { get; init; } = null;
+    private Action<ApiOptions> apiOptionsInit = null;
+
+    private IHostBuilder hostBuilder = null;
 
     #endregion
 
@@ -46,22 +49,6 @@ public abstract class Rest : App
 
     public Rest()
     {
-        Starting += () =>
-        {
-            Event("Rest.Start");
-
-            if (DatabaseConfigName == null)
-            {
-                FatalError("DatabaseConfigName is required");
-            }
-        };
-        Started += () =>
-        {
-            apiOptions.DatabaseConfigName = DatabaseConfigName;
-
-            Event("Rest.Started");
-        };
-
         Assemblies.Add(Assembly.GetCallingAssembly());
     }
 
@@ -69,13 +56,40 @@ public abstract class Rest : App
 
     #region Methods
 
-    public void Options(Action<ApiOptions> apiOptionsAction)
+    protected override Task<bool> OnStart()
     {
-        Starting += () =>
+        apiOptionsInit?.Invoke(apiOptions);
+
+        var c = ErrorCounter;
+
+        if (apiOptions.DatabaseConfigName == null)
+            Error("DatabaseConfigName is required");
+
+        apiOptions.Config = Config;
+
+        var ok = true;
+        if (c > ErrorCounter)
+            ok = false;
+        else
         {
-            apiOptionsAction?.Invoke(apiOptions);
-            apiOptions.Config = Config;
-        };
+            if (hostBuilder != null)
+            {
+                // start ho
+                var cancel = new CancellationTokenSource();
+                var hostTask = hostBuilder.Build().RunAsync(cancel.Token);
+
+                // bind host to app
+                BindProcess(hostTask);
+                BindProcess(cancel);
+            }
+        }
+
+        return Task.FromResult(ok);
+    }
+
+    public void Options(Action<ApiOptions> init)
+    {
+        apiOptionsInit = init;
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -465,6 +479,11 @@ public abstract class Rest : App
         }
 
         return dict;
+    }
+
+    internal void BindBuilder(IHostBuilder hostBuilder)
+    {
+        this.hostBuilder = hostBuilder;
     }
 
     #endregion

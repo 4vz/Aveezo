@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Renci.SshNet.Security;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -19,7 +20,17 @@ namespace Aveezo
 
         public SqlCell this[int index] => index >= 0 && index < cells.Length ? cells[index] : throw new IndexOutOfRangeException(nameof(index));
 
-        public SqlCell this[string key] => result.ColumnIndex.ContainsKey(key) ? cells[result.ColumnIndex[key]] : throw new KeyNotFoundException(nameof(key));
+        public SqlCell this[string column]
+        {
+            get
+            {
+                var index = result.GetColumnIndex(column);
+                if (index >= 0) 
+                    return cells[index];
+                else
+                    throw new KeyNotFoundException(nameof(column));
+            }
+        }
 
         public (SqlCell, SqlCell) this[string key1, string key2]
             => (this[key1], this[key2]);
@@ -90,7 +101,7 @@ namespace Aveezo
 
         IEnumerator IEnumerable.GetEnumerator() => cells.GetEnumerator();
 
-        public bool ContainsKey(string key) => result.ColumnIndex.ContainsKey(key);
+        public bool ContainsColumn(string column) => result.ContainsColumn(column);
 
         public string[] Print()
         {

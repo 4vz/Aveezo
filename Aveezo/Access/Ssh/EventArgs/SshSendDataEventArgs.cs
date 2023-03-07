@@ -4,22 +4,24 @@ using System.Text;
 
 namespace Aveezo
 {
-    public class SshDataEventArgs : EventArgs
+    public class SshSendDataEventArgs : EventArgs
     {
         #region Fields
 
         public string Data { get; }
 
-        public string[] Lines { get; }
+        public bool NewLine { get; }
 
         #endregion
 
         #region Constructors
 
-        public SshDataEventArgs(string data, string[] lines)
+        public SshSendDataEventArgs(string data) : this(data, false) { }
+
+        public SshSendDataEventArgs(string data, bool newLine)
         {
             Data = data;
-            Lines = lines;
+            NewLine = newLine;
         }
 
         #endregion

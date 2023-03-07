@@ -1,29 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Aveezo
+namespace Aveezo.Test
 {
-    public class UnixSshPromptReadyEventArgs : EventArgs
+    public class TestApp : App
     {
         #region Fields
-
-        public bool First { get; }
 
         #endregion
 
         #region Constructors
 
-        public UnixSshPromptReadyEventArgs(bool first)
+        public TestApp()
         {
-            First = first;
         }
 
         #endregion
 
         #region Methods
+
+        protected override async Task<bool> OnStart()
+        {
+            Event("Starttt");
+
+            return false;
+        }
+
+        #endregion
+
+        #region Statics
 
         #endregion
     }

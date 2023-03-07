@@ -142,7 +142,7 @@ namespace Aveezo
 
                         //if (childType.IsGenericType && childType.Is 
 
-                        //var formatter = (IJsonFormatter<T>)Activator.CreateInstance(typeof(StaticNullableFormatter<>).MakeGenericType(childType), new object[] { innerFormatter });
+                        //var formatter = (IJsonFormatter<TResult>)Activator.CreateInstance(typeof(StaticNullableFormatter<>).MakeGenericType(childType), new object[] { innerFormatter });
 
 
                     }
@@ -153,7 +153,7 @@ namespace Aveezo
 
 
 
-                    IJsonFormatter<T> formatter = null;
+                    IJsonFormatter<TResult> formatter = null;
 
                     if (childTypeInfo.IsNullable())
                     {
@@ -166,7 +166,7 @@ namespace Aveezo
 
                             if (innerFormatter != null)
                             {
-                                formatter = (IJsonFormatter<T>)Activator.CreateInstance(typeof(StaticNullableFormatter<>).MakeGenericType(childTypeInfoType), new object[] { innerFormatter });
+                                formatter = (IJsonFormatter<TResult>)Activator.CreateInstance(typeof(StaticNullableFormatter<>).MakeGenericType(childTypeInfoType), new object[] { innerFormatter });
                             }
                         }
                     }*/
@@ -186,9 +186,9 @@ namespace Aveezo
                    
                     if (innerFormatter != null)
                     {
-                        var wrappedFormatter = (IJsonFormatter<T>)Activator.CreateInstance(typeof(StaticNullableFormatter<>).MakeGenericType(childTypeInfo.AsType()), new object[] { innerFormatter });
+                        var wrappedFormatter = (IJsonFormatter<TResult>)Activator.CreateInstance(typeof(StaticNullableFormatter<>).MakeGenericType(childTypeInfo.AsType()), new object[] { innerFormatter });
 
-                        wrappedFormatter.Serialize(ref writer, (T)childValue, formatterResolver);
+                        wrappedFormatter.Serialize(ref writer, (TResult)childValue, formatterResolver);
                     }*/
 
                     //StaticNullableFormatter<>
@@ -196,7 +196,7 @@ namespace Aveezo
                     //IJsonFormatter<> childFormatter = (IJsonFormatter<>)formatterResolver.GetFormatterDynamic(childType);
 
 
-                    //formatterResolver.GetFormatterWithVerify<T>().Serialize(ref writer, (T), formatterResolver);
+                    //formatterResolver.GetFormatterWithVerify<TResult>().Serialize(ref writer, (TResult), formatterResolver);
 
                     index++;
                 }

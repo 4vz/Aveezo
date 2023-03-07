@@ -1,144 +1,153 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Aveezo
 {
     public static class ObjectExtensions
     {
-        public static T[] Filter<T>(this T[] array, Predicate<T> filter)
+        public static TResult IfNotNull<T, TResult>(this T x, Func<T, TResult> f) => x is null ? default : f(x);
+
+        public static TResult IfNotNull<T, TResult>(this T x, Func<T, TResult> f, TResult orElse) => x is null ? orElse : f(x);
+
+        public static string Format<T>(this T x, string format, Func<T, object[]> func) => x.IfNotNull(o => string.Format(format, func(o)));
+
+        public static string Format<T>(this T x, string format) => x.Format(format, o => new object[] { o });
+
+        public static bool TryConvert(this object value, Type target, out object cast)
         {
-            List<T> newArray = new List<T>();
-
-            foreach (var item in array)
+            if (value is Array array)
             {
-                var keep = filter(item);
+                List<object> list = new();
 
-                if (keep) newArray.Add(item);
-            }
-            return newArray.ToArray();
-        }
+                Type elementTarget;
+                if (target.IsArray)
+                    elementTarget = target.GetElementType();
+                else
+                    elementTarget = target;
 
-        public static T Find<T>(this T[] array, Predicate<T> find)
-        {
-            T found = default;
-
-            foreach (var t in array)
-            {
-                if (find(t))
+                foreach (var val in array)
                 {
-                    found = t;
-                    break;
+                    if (val.TryConvert(elementTarget, out var od))
+                        list.Add(od);
+                    else
+                        list.Add(default);
                 }
+
+                cast = list.ToArray();
+                return true;
             }
-
-            return found;
-        }
-
-        public static bool Contains<T>(this T[] array, T find) => array.Find(t => find != null && find.Equals(t)) != null;
-
-        public static TResult[] Invoke<TResult>(this Array array, Func<object, TResult> f)
-        {
-            var list = new List<TResult>();
-
-            foreach (var t in array)
-            {
-                list.Add(f(t));
-            }
-
-            return list.ToArray();
-        }
-
-        public static TResult[] Invoke<T, TResult>(this T[] array, Func<T, TResult> f)
-        {
-            var list = new List<TResult>();
-
-            foreach (var t in array)
-            {
-                list.Add(f(t));
-            }
-
-            return list.ToArray();
-        }
-
-        public static TResult Invoke<T, TResult>(this T x, Func<T, TResult> f) => x is null ? default : f(x);
-
-        public static TResult Invoke<T, TResult>(this T x, Func<T, TResult> f, TResult ifnull) => x is null ? ifnull : f(x);
-
-        public static string Format<T>(this T x, string format) => x.Invoke(o => string.Format(format, o));
-
-        public static T Cast<T>(this object value)
-        {
-            value.TryCast<T>(out var cast);
-
-            return cast;
-        }
-
-        public static bool TryCast<T>(this object value, out T cast)
-        {
-            var notExcepted = true;
-
-            if (value is T variable)
-                cast = variable;
             else
             {
-                notExcepted = value.TryCast(typeof(T), out object icast);
-                cast = (T)icast;
-            }
+                var ok = true;
 
-            return notExcepted;
+                try
+                {
+                    if (target == typeof(IPAddress) && value is string str && IPAddress.TryParse(str, out var ipAddress))
+                        cast = ipAddress;                    
+                    else if (Nullable.GetUnderlyingType(target) != null)
+                        cast = TypeDescriptor.GetConverter(target).ConvertFrom(value);
+                    else
+                        cast = System.Convert.ChangeType(value, target);
+                }
+                catch (Exception)
+                {
+                    ok = false;
+                    cast = default;
+                }
+
+                return ok;
+            }
         }
 
-        public static bool TryCast(this object value, Type to, out object cast)
+        public static bool TryConvert<TResult>(this IEnumerable<object> array, out IEnumerable<TResult> cast)
         {
-            bool notExcepted = true;
-            object casted = null;
+            if (array is null) throw new ArgumentNullException(nameof(array));
 
-            if (casted == null && to == typeof(IPAddress))
+            bool ok = true;
+            List<TResult> n = new();
+
+            foreach (var value in array)
             {
-                if (value is string str && IPAddress.TryParse(str, out var ipAddress))
-                    casted = ipAddress;
+                ok = value.TryConvert<TResult>(out TResult valueCast);
+
+                if (!ok)
+                    break;
+                else
+                    n.Add(valueCast);
             }
+
+            if (!ok)
+                cast = default;
+            else
+                cast = n;
+
+            return ok;
+        }
+
+        public static bool TryConvert<TResult>(this object value, out TResult cast)
+        {
+            bool ok = true;
+            cast = default;
 
             try
             {
-                if (casted != null)
-                    cast = Convert.ChangeType(casted, to);
-                else
-                {
-                    //Handling Nullable types i.e, int?, double?, bool? .. etc
-                    if (Nullable.GetUnderlyingType(to) != null)
-                        cast = TypeDescriptor.GetConverter(to).ConvertFrom(value);
-                    else
-                        cast = Convert.ChangeType(value, to);
-                }
+                cast = (TResult)value;
             }
-            catch (Exception)
+            catch
             {
-                notExcepted = false;
-                cast = default;
+                ok = value.TryConvert(typeof(TResult), out object icast);
+                cast = (TResult)icast;
             }
 
-            return notExcepted;
+            return ok;
         }
 
-        public static int IndexOf<T>(this T[] array, T value)
+        public static IEnumerable<TResult> Convert<TResult>(this IEnumerable<object> value)
         {
-            var result = -1;
-            var index = 0;
+            value.TryConvert<TResult>(out var cast);
+            return cast;
+        }
 
-            foreach (T item in array)
-            {
-                if (Equals(item, value))
-                {
-                    result = index;
-                    break;
-                }
-                index++;
-            }
-            return result;
+        public static TResult[] Convert<TResult>(this object[] value) => ((IEnumerable<object>)value).Convert<TResult>().ToArray();
+
+        public static TResult Convert<TResult>(this object value)
+        {
+            value.TryConvert<TResult>(out var cast);
+            return cast;
+        }
+
+        /// <summary>
+        /// Returns array in the value is an array, else creates new array with the value will be the first entry.
+        /// </summary>
+        public static T[] Array<T>(this T value)
+        {
+            if (value is T[] array)
+                return array;
+            else
+                return new T[] { value };
+        }
+
+        /// <summary>
+        /// Gets whether the value is a numeric type.
+        /// </summary>
+        public static bool IsNumeric(this object value)
+        {
+            return value is sbyte
+                    || value is byte
+                    || value is short
+                    || value is ushort
+                    || value is int
+                    || value is uint
+                    || value is long
+                    || value is ulong
+                    || value is float
+                    || value is double
+                    || value is decimal;
         }
 
         /// <summary>
@@ -162,56 +171,9 @@ namespace Aveezo
             return result;
         }
 
-        public static T[][] Split<T>(this T[] array, int size)
-        {
-            if (size < 1) throw new ArgumentOutOfRangeException();
-
-            var marray = new List<T[]>();
-            var oarray = new List<T>();
-
-            int c = 0;
-            foreach (T t in array)
-            {
-                oarray.Add(t);
-
-                if (++c == size)
-                {
-                    marray.Add(oarray.ToArray());
-                    oarray.Clear();
-                    c = 0;
-                }
-            }
-
-            if (oarray.Count > 0)
-                marray.Add(oarray.ToArray());
-
-
-            return marray.ToArray();
-        }
-
-        public static bool IsNumeric(this object value)
-        {
-            return value is sbyte
-                    || value is byte
-                    || value is short
-                    || value is ushort
-                    || value is int
-                    || value is uint
-                    || value is long
-                    || value is ulong
-                    || value is float
-                    || value is double
-                    || value is decimal;
-        }
-
-        public static T[] Array<T>(this T value)
-        {
-            if (value is Array array)
-                return (T[])array;
-            else
-                return new T[] { value }; 
-        }
-
+        /// <summary>
+        /// Returns true if the value has passed the filter, and for convinience output the value through out object.
+        /// </summary>
         public static bool Is<T>(this T value, Predicate<T> filter, out T obj)
         {
             obj = value;
@@ -229,6 +191,8 @@ namespace Aveezo
         }
 
         public static T NullIf<T>(this T value, T when) => Equals(value, when) ? default : value;
+
+        public static string NullIfEmpty(this string value) => Equals(value, string.Empty) ? null : value;
 
     }
 }

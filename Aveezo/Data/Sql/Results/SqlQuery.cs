@@ -159,7 +159,7 @@ namespace Aveezo
                     Context context = new();
 
                     Dictionary<string, SqlCell> rowdict = new();
-                    foreach (var (name, index) in result.ColumnIndex) rowdict.Add(name, row[index]);
+                    foreach (var (name, index) in result.ColumnIndexes) rowdict.Add(name, row[index]);
 
                     List<SqlBuilder> builders = new();
                     Dictionary<string, object> formattedValues = new();
@@ -179,7 +179,7 @@ namespace Aveezo
                     // formatter
                     foreach (var builder in builders)
                     {
-                        var cell = row.ContainsKey(builder.Name) ? row[builder.Name] : null;
+                        var cell = row.ContainsColumn(builder.Name) ? row[builder.Name] : null;
                         object formattedValue = null;
 
                         if (builder.Formatter != null)

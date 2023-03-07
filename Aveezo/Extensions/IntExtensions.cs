@@ -26,20 +26,6 @@ namespace Aveezo
             else return null;
         }
 
-        public static int GetAvailable(this List<int> list)
-        {
-            var index = 1;
-            do
-            {
-                if (!list.Contains(index)) break;
-                index++;
-            }
-            while (index < int.MaxValue);
-            list.Add(index);
-
-            return index;
-        }
-
         public static bool Between(this int value, int first, int last)
         {
             if (first > last) throw new Exception("Invalid range");
@@ -49,5 +35,7 @@ namespace Aveezo
             else
                 return false;
         }
+
+        public static string FormatNumber(this int value, string singular, string plural) => value.Format(value <= 1 ? singular : plural);
     }
 }

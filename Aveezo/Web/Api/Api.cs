@@ -254,7 +254,7 @@ public abstract class Api : ControllerBase
                                     var value = property.FormattedValue;
                                     if (value != null && value.GetType() != propertyType)
                                     {
-                                        if (value.TryCast(propertyType, out object cast))
+                                        if (value.TryConvert(propertyType, out object cast))
                                             propertyInfo.SetValue(property.Item, cast);
                                     }
                                     else

@@ -19,7 +19,7 @@ public class FieldAttribute : Attribute
 
     #region Constructors
 
-    /// <param name="name">The name of the field. If using SelectBuilder, it should match with builder name.</param>
+    /// <param name="name">The name of the field. If using SelectBuilder, it should match with hostBuilder name.</param>
     /// <param name="options">Options for the fields.</param>
     public FieldAttribute(string name, FieldOptions options)
     {

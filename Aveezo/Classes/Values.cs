@@ -33,7 +33,7 @@ namespace Aveezo
         {
             List<T> s = new();
             foreach (var value in values)
-                s.Add(value.Cast<T>());
+                s.Add(value.Convert<T>());
 
             this.values = s.ToArray();
         }

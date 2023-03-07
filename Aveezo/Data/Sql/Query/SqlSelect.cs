@@ -222,6 +222,12 @@ public class SqlSelect : SqlQueryBase
 
     public SqlSelect Where(SqlColumn whereColumn, object whereValue) => Where(whereColumn == whereValue);
 
+    public SqlSelect OrderBy(SqlOrder order)
+    {
+        Order = order;
+        return this;
+    }
+
     public SqlSelect OrderBy(SqlColumn column, Order order)
     {
         Order = SqlOrder.By(column, order);
@@ -241,8 +247,6 @@ public class SqlSelect : SqlQueryBase
         return this;
     }
 
-
-
     public SqlSelect Limit(int limit, int offset)
     {
         LimitLength = limit;
@@ -255,17 +259,17 @@ public class SqlSelect : SqlQueryBase
     public SqlSelect UnionAll(params SqlSelect[] selects)
     {
         // should match with SelectColumns
-        var sc = SelectColumns.Invoke(o => o.Length, 0);
+        var sc = SelectColumns.IfNotNull(o => o.Length, 0);
 
         foreach (var select in selects)
         {
-            var ssc = select.SelectColumns.Invoke(o => o.Length, 0);
+            var ssc = select.SelectColumns.IfNotNull(o => o.Length, 0);
             if (ssc != sc) throw new InvalidOperationException("SelectColumns should match with main SqlSelect");
         }
 
         unionAlls = selects;
 
-        // make builder keys same for every select in unionAlls
+        // make hostBuilder keys same for every select in unionAlls
         List<string> names = new();
 
         // get available keys from this and all unions
@@ -306,7 +310,7 @@ public class SqlSelect : SqlQueryBase
         }
 
         // create a new encapsulating select for these mfs
-        return Database.Select().From(this);
+        return Database.SelectFrom(this);
     }
 
     private SqlTable GetTableStatement(Values<string> selectBuilders)
@@ -330,7 +334,7 @@ public class SqlSelect : SqlQueryBase
                 } 
             }
 
-            return Table.GetStatement(statement.ToString());
+            return Table.CreateStatement(statement.ToString());
         }
         else
             return Table;
@@ -380,7 +384,7 @@ public class SqlSelect : SqlQueryBase
     public void RemoveBuilder() => builders.Clear();
 
     /// <summary>
-    /// Get builder list by name.
+    /// Get hostBuilder list by name.
     /// </summary>
     public Dictionary<string, SqlBuilder> GetBuilderStack(string name)
     {
@@ -420,7 +424,7 @@ public class SqlSelect : SqlQueryBase
     }
 
     /// <summary>
-    /// Get builder list by stack name.
+    /// Get hostBuilder list by stack name.
     /// </summary>
     public Dictionary<string, SqlBuilder> GetBuildersByStack(string stack)
     {
@@ -444,7 +448,7 @@ public class SqlSelect : SqlQueryBase
     }
 
     /// <summary>
-    /// Get builder by name for current row.
+    /// Get hostBuilder by name for current row.
     /// </summary>
     public SqlBuilder GetBuilder(string name, SqlRow row)
     {
@@ -452,7 +456,7 @@ public class SqlSelect : SqlQueryBase
 
         if (builderStack != null && builderStack.Count > 0)
         {
-            if (row != null && row.ContainsKey("___select"))
+            if (row != null && row.ContainsColumn("___select"))
             {
                 var selectId = row["___select"].GetString();
 
@@ -654,7 +658,7 @@ public class SqlSelect : SqlQueryBase
             selectBuilders = extSelectBuilders.ToArray();
         }
 
-        // Get columns from my builder
+        // Get columns from my hostBuilder
         var builderColumns = new List<SqlColumn>();
 
         if (selectBuilders != null)
@@ -700,7 +704,7 @@ public class SqlSelect : SqlQueryBase
             }
         }
 
-        // Combine predefined columns with builder columns
+        // Combine predefined columns with hostBuilder columns
         var allColumnsList = new List<SqlColumn>();
 
         if (SelectColumns != null)

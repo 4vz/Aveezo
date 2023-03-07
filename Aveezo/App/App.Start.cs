@@ -47,20 +47,12 @@ namespace Aveezo
                     });
                 });
 
+                rest.BindBuilder(hostBuilder);
+
                 // start app
                 start(directory);
 
-                rest.Started += () =>
-                {
-                    // start ho
-                    var cancel = new CancellationTokenSource();
-                    var hostTask = hostBuilder.Build().RunAsync(cancel.Token);
-
-                    // bind host to app
-                    app.BindProcess(hostTask);
-                    app.BindProcess(cancel);
-                };
-                
+                // wait app until close
                 app.Wait();
             }
             else
@@ -78,7 +70,7 @@ namespace Aveezo
             }
         }        
 
-        public static void Start(App app) => Start(app, (directory) => app.Start(directory), () => app.Stop());
+        public static void Start(App app) => Start(app, app.Start, app.Stop);
 
         public static void Start(AppStartCallback start) => Start(null, start, null);
 

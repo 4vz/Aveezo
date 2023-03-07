@@ -11,23 +11,25 @@ namespace Aveezo;
 
 public interface IApp
 {
-    public void Event(string[] messages);
+    public Task Event(string message);
 
-    public void Event(string message);
+    public Task Event(string[] messages);
 
-    public void Event(string[] messages, string label);
+    public Task Event(string message, string label);
 
-    public void Event(string message, string label);
+    public Task Event(string[] messages, string label);
 
-    public void Event(string[] messages, string label, string subLabel);
+    public Task Error(string message);
 
-    public void Event(string message, string label, string subLabel);
+    public Task Error(string[] messages);
 
-    public void Error(string[] messages, string label);
+    public Task Error(string message, string label);
 
-    public void Error(string message, string label);
+    public Task Error(string[] messages, string label);
 
-    public void Error(Exception exception, string label);
+    public Task Error(Exception exception);
+
+    public Task Error(Exception exception, string label);
 }
 
 public abstract partial class App : IApp
@@ -37,6 +39,12 @@ public abstract partial class App : IApp
     private Task main = null;
 
     private CancellationTokenSource cancel = null;
+
+    private AutoResetEvent mainLoopWait = new AutoResetEvent(false);
+
+    private List<Task> bindTasks = new List<Task>();
+
+    private List<CancellationTokenSource> bindCancels = new List<CancellationTokenSource>();
 
     public string Directory { get; set; }
 
@@ -50,15 +58,7 @@ public abstract partial class App : IApp
 
     public bool IsRunning { get; private set; } = false;
 
-    private AutoResetEvent mainLoopWait = new AutoResetEvent(false);
-
-    protected event Action Starting;
-
-    protected event Action Started;
-
-    private List<Task> bindTasks = new List<Task>();
-
-    private List<CancellationTokenSource> bindCancels = new List<CancellationTokenSource>();
+    public bool IsFatalError { get; private set; }
 
     #endregion
 
@@ -82,21 +82,21 @@ public abstract partial class App : IApp
             var success = args.Success;
             var exception = args.Exception;
 
-            Event($"INFO: {sql.DatabaseType} ", name);
+            Event($"INFO:Type={sql.DatabaseType} Database={(!string.IsNullOrEmpty(sql.Database) ? sql.Database : "<none>")} User={sql.User}", name);
 
             if (success)
             {
-                Event($"OK: {(!string.IsNullOrEmpty(sql.Database) ? $"{sql.Database}:" : "")}{sql.User}", name);
+                Event($"OK", name);
             }
             else
             {
                 if (exception != null)
-                    Event($"FAILED: {exception.Message}", name);
+                    Event($"FAILED:{exception.Message}", name);
                 else
                     Event($"FAILED", name);
 
 #if DEBUG
-                Event($"STRING: {sql.Connection.ConnectionString}", name);
+                Event($"STRING:{sql.Connection.ConnectionString}", name);
 #endif
             }
         }
@@ -108,14 +108,14 @@ public abstract partial class App : IApp
 
     private async Task Main()
     {
-        Event("App.Start");
+        Event("App.Starting");
 
         var configRequiredPassed = true;
 
-        Event("Checking for main config file...", "CONFIG");
-
         if (ConfigFile != null)
         {
+            Event("Checking config file...", "CONFIG");
+
             if (ConfigRequired)
             {
                 Event("Config is required", "CONFIG");
@@ -155,15 +155,11 @@ public abstract partial class App : IApp
             return;
         }
 
-        Starting?.Invoke();
-
         var start = await OnStart();
 
         if (start)
         {
             Event("App.Started");
-
-            Started?.Invoke();
 
             IsRunning = true;
 
@@ -257,7 +253,7 @@ public abstract partial class App : IApp
 
             main = Task.Run(Main);
         }
-    }
+    } 
 
     public void Stop()
     {
@@ -279,6 +275,8 @@ public abstract partial class App : IApp
     /// </summary>
     public void FatalError(string message)
     {
+        IsFatalError = true;
+
         OnEvent(WriteErrorLog($"{message}"), 0);
         Stop();
 
@@ -312,13 +310,13 @@ public abstract partial class App : IApp
 
     #region Virtuals
 
-    protected virtual async Task OnLoop() { }
+    protected virtual Task OnLoop() => Task.CompletedTask;
 
-    protected virtual async Task<bool> OnStart() => true;
+    protected virtual Task<bool> OnStart() => Task.FromResult(true);
 
-    protected virtual async Task OnStop() { }
+    protected virtual Task OnStop() => Task.CompletedTask;
 
-    protected virtual void OnEvent(string message, int repeat)
+    protected virtual async Task OnEvent(string message, int repeat)
     {
         if (Terminal.IsAvailable)
         {

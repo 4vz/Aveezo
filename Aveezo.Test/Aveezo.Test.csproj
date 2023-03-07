@@ -2,17 +2,30 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <AssemblyName>aveezo.test</AssemblyName>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <RootNamespace>Aveezo.Test</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants />
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Aveezo.Data\Aveezo.Data.csproj" />
+    <None Include="..\..\_VisualStudio\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Aveezo\Aveezo.csproj" />
   </ItemGroup>
 

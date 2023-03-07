@@ -55,32 +55,32 @@ namespace Aveezo
         public static string[] KeyExamples(Type type, ExampleUseCase useCase, int counter)
         {
             string[] keys = null;
-            if (type == typeof(bool)) keys = BoolExample.Invoke((bool o) => o.ToString());
-            else if (type == typeof(sbyte)) keys = SbyteExample.Invoke((sbyte o) => o.ToString());
-            else if (type == typeof(byte)) keys = ByteExample.Invoke((byte o) => o.ToString());
-            else if (type == typeof(short)) keys = ShortExample.Invoke((short o) => o.ToString());
-            else if (type == typeof(ushort)) keys = UshortExample.Invoke((ushort o) => o.ToString());
-            else if (type == typeof(int)) keys = IntExample.Invoke((int o) => o.ToString());
-            else if (type == typeof(uint)) keys = UintExample.Invoke((uint o) => o.ToString());
-            else if (type == typeof(long)) keys = LongExample.Invoke((long o) => o.ToString());
-            else if (type == typeof(ulong)) keys = UlongExample.Invoke((ulong o) => o.ToString());
-            else if (type == typeof(char)) keys = CharExample.Invoke((char o) => o.ToString());
-            else if (type == typeof(float)) keys = FloatExample.Invoke((float o) => o.ToString());
-            else if (type == typeof(double)) keys = DoubleExample.Invoke((double o) => o.ToString());
-            else if (type == typeof(decimal)) keys = DecimalExample.Invoke((decimal o) => o.ToString());
-            else if (type == typeof(DateTime)) keys = DateTimeExample.Invoke(o => o.ToString("o"));
-            else if (type == typeof(DateTimeOffset)) keys = DateTimeOffsetExample.Invoke(o => o.ToString("o"));
-            else if (type == typeof(TimeSpan)) keys = TimeSpanExample.Invoke(o => o.ToISO8601());
+            if (type == typeof(bool)) keys = BoolExample.Each((bool o) => o.ToString());
+            else if (type == typeof(sbyte)) keys = SbyteExample.Each((sbyte o) => o.ToString());
+            else if (type == typeof(byte)) keys = ByteExample.Each((byte o) => o.ToString());
+            else if (type == typeof(short)) keys = ShortExample.Each((short o) => o.ToString());
+            else if (type == typeof(ushort)) keys = UshortExample.Each((ushort o) => o.ToString());
+            else if (type == typeof(int)) keys = IntExample.Each((int o) => o.ToString());
+            else if (type == typeof(uint)) keys = UintExample.Each((uint o) => o.ToString());
+            else if (type == typeof(long)) keys = LongExample.Each((long o) => o.ToString());
+            else if (type == typeof(ulong)) keys = UlongExample.Each((ulong o) => o.ToString());
+            else if (type == typeof(char)) keys = CharExample.Each((char o) => o.ToString());
+            else if (type == typeof(float)) keys = FloatExample.Each((float o) => o.ToString());
+            else if (type == typeof(double)) keys = DoubleExample.Each((double o) => o.ToString());
+            else if (type == typeof(decimal)) keys = DecimalExample.Each((decimal o) => o.ToString());
+            else if (type == typeof(DateTime)) keys = DateTimeExample.Each(o => o.ToString("o"));
+            else if (type == typeof(DateTimeOffset)) keys = DateTimeOffsetExample.Each(o => o.ToString("o"));
+            else if (type == typeof(TimeSpan)) keys = TimeSpanExample.Each(o => o.ToISO8601());
             else if (type == typeof(string))
             {
                 if (useCase == ExampleUseCase.Base64) keys = Base64Example;
                 else keys = StringExample;
             }
-            else if (type == typeof(Guid)) keys = GuidExample.Invoke((Guid o) => o.ToString());
-            else if (type == typeof(BitArray)) keys = BitArrayExample.Invoke(o => o.ToString('0', '1'));
-            else if (type == typeof(PhysicalAddress)) keys = PhysicalAddressExample.Invoke((PhysicalAddress o) => o.ToString());
-            else if (type == typeof(IPAddressCidr)) keys = IPAddressCidrExample.Invoke((IPAddressCidr o) => o.ToString());
-            else if (type == typeof(IPAddress)) keys = IPAddressExample.Invoke((IPAddress o) => o.ToString());
+            else if (type == typeof(Guid)) keys = GuidExample.Each((Guid o) => o.ToString());
+            else if (type == typeof(BitArray)) keys = BitArrayExample.Each(o => o.ToString('0', '1'));
+            else if (type == typeof(PhysicalAddress)) keys = PhysicalAddressExample.Each((PhysicalAddress o) => o.ToString());
+            else if (type == typeof(IPAddressCidr)) keys = IPAddressCidrExample.Each((IPAddressCidr o) => o.ToString());
+            else if (type == typeof(IPAddress)) keys = IPAddressExample.Each((IPAddress o) => o.ToString());
             else keys = null;
 
             if (counter == -1 || keys == null)
@@ -91,32 +91,32 @@ namespace Aveezo
         public static IOpenApiAny[] ValueExamples(Type type, ExampleUseCase useCase, int counter)
         {
             IOpenApiAny[] values = null;
-            if (type == typeof(bool)) values = BoolExample.Invoke(o => new OpenApiBoolean(o));
-            else if (type == typeof(sbyte)) values = SbyteExample.Invoke(o => new OpenApiInteger(o));
-            else if (type == typeof(byte)) values = ByteExample.Invoke(o => new OpenApiInteger(o));
-            else if (type == typeof(short)) values = ShortExample.Invoke(o => new OpenApiInteger(o));
-            else if (type == typeof(ushort)) values = UshortExample.Invoke(o => new OpenApiInteger(o));
-            else if (type == typeof(int)) values = IntExample.Invoke(o => new OpenApiInteger(o));
-            else if (type == typeof(uint)) values = UintExample.Invoke(o => new OpenApiLong(o));
-            else if (type == typeof(long)) values = LongExample.Invoke(o => new OpenApiLong(o));
-            else if (type == typeof(ulong)) values = UlongExample.Invoke((ulong o) => new OpenApiString(o.ToString()));
-            else if (type == typeof(char)) values = CharExample.Invoke((char o) => new OpenApiString(o.ToString()));
-            else if (type == typeof(float)) values = FloatExample.Invoke(o => new OpenApiFloat(o));
-            else if (type == typeof(double)) values = DoubleExample.Invoke(o => new OpenApiDouble(o));
-            else if (type == typeof(decimal)) values = DecimalExample.Invoke((decimal o) => new OpenApiString(o.ToString()));
-            else if (type == typeof(DateTime)) values = DateTimeExample.Invoke(o => new OpenApiDateTime(o));
-            else if (type == typeof(DateTimeOffset)) values = DateTimeOffsetExample.Invoke(o => new OpenApiDateTime(o));
-            else if (type == typeof(TimeSpan)) values = TimeSpanExample.Invoke(o => new OpenApiString(o.ToISO8601()));
+            if (type == typeof(bool)) values = BoolExample.Each(o => new OpenApiBoolean(o));
+            else if (type == typeof(sbyte)) values = SbyteExample.Each(o => new OpenApiInteger(o));
+            else if (type == typeof(byte)) values = ByteExample.Each(o => new OpenApiInteger(o));
+            else if (type == typeof(short)) values = ShortExample.Each(o => new OpenApiInteger(o));
+            else if (type == typeof(ushort)) values = UshortExample.Each(o => new OpenApiInteger(o));
+            else if (type == typeof(int)) values = IntExample.Each(o => new OpenApiInteger(o));
+            else if (type == typeof(uint)) values = UintExample.Each(o => new OpenApiLong(o));
+            else if (type == typeof(long)) values = LongExample.Each(o => new OpenApiLong(o));
+            else if (type == typeof(ulong)) values = UlongExample.Each((ulong o) => new OpenApiString(o.ToString()));
+            else if (type == typeof(char)) values = CharExample.Each((char o) => new OpenApiString(o.ToString()));
+            else if (type == typeof(float)) values = FloatExample.Each(o => new OpenApiFloat(o));
+            else if (type == typeof(double)) values = DoubleExample.Each(o => new OpenApiDouble(o));
+            else if (type == typeof(decimal)) values = DecimalExample.Each((decimal o) => new OpenApiString(o.ToString()));
+            else if (type == typeof(DateTime)) values = DateTimeExample.Each(o => new OpenApiDateTime(o));
+            else if (type == typeof(DateTimeOffset)) values = DateTimeOffsetExample.Each(o => new OpenApiDateTime(o));
+            else if (type == typeof(TimeSpan)) values = TimeSpanExample.Each(o => new OpenApiString(o.ToISO8601()));
             else if (type == typeof(string))
             {
-                if (useCase == ExampleUseCase.Base64) values = Base64Example.Invoke(o => new OpenApiString(o));
-                else values = StringExample.Invoke(o => new OpenApiString(o));
+                if (useCase == ExampleUseCase.Base64) values = Base64Example.Each(o => new OpenApiString(o));
+                else values = StringExample.Each(o => new OpenApiString(o));
             }
-            else if (type == typeof(Guid)) values = GuidExample.Invoke((Guid o) => new OpenApiString(o.ToString()));
-            else if (type == typeof(BitArray)) values = BitArrayExample.Invoke(o => new OpenApiString(o.ToString('0', '1')));
-            else if (type == typeof(PhysicalAddress)) values = PhysicalAddressExample.Invoke(o => new OpenApiString(o.ToString(":")));
-            else if (type == typeof(IPAddressCidr)) values = IPAddressCidrExample.Invoke((IPAddressCidr o) => new OpenApiString(o.ToString()));
-            else if (type == typeof(IPAddress)) values = IPAddressExample.Invoke((IPAddress o) => new OpenApiString(o.ToString()));
+            else if (type == typeof(Guid)) values = GuidExample.Each((Guid o) => new OpenApiString(o.ToString()));
+            else if (type == typeof(BitArray)) values = BitArrayExample.Each(o => new OpenApiString(o.ToString('0', '1')));
+            else if (type == typeof(PhysicalAddress)) values = PhysicalAddressExample.Each(o => new OpenApiString(o.ToString(":")));
+            else if (type == typeof(IPAddressCidr)) values = IPAddressCidrExample.Each((IPAddressCidr o) => new OpenApiString(o.ToString()));
+            else if (type == typeof(IPAddress)) values = IPAddressExample.Each((IPAddress o) => new OpenApiString(o.ToString()));
             else values = null;
 
             if (counter == -1 || values == null)
@@ -131,28 +131,28 @@ namespace Aveezo
 
             try
             {
-                if (type == typeof(bool)) keys = example.Invoke(o => ((bool)o).ToString());
-                else if (type == typeof(sbyte)) keys = example.Invoke(o => ((sbyte)o).ToString());
-                else if (type == typeof(byte)) keys = example.Invoke(o => ((byte)o).ToString());
-                else if (type == typeof(short)) keys = example.Invoke(o => ((short)o).ToString());
-                else if (type == typeof(ushort)) keys = example.Invoke(o => ((ushort)o).ToString());
-                else if (type == typeof(int)) keys = example.Invoke(o => ((int)o).ToString());
-                else if (type == typeof(uint)) keys = example.Invoke(o => ((uint)o).ToString());
-                else if (type == typeof(long)) keys = example.Invoke(o => ((long)o).ToString());
-                else if (type == typeof(ulong)) keys = example.Invoke(o => ((ulong)o).ToString());
-                else if (type == typeof(char)) keys = example.Invoke(o => ((char)o).ToString());
-                else if (type == typeof(float)) keys = example.Invoke(o => ((float)o).ToString());
-                else if (type == typeof(double)) keys = example.Invoke(o => ((double)o).ToString());
-                else if (type == typeof(decimal)) keys = example.Invoke(o => ((decimal)o).ToString());
-                else if (type == typeof(DateTime)) keys = example.Invoke(o => ((DateTime)o).ToString("o"));
-                else if (type == typeof(DateTimeOffset)) keys = example.Invoke(o => ((DateTimeOffset)o).ToString("o"));
-                else if (type == typeof(TimeSpan)) keys = example.Invoke(o => ((TimeSpan)o).ToISO8601());
-                else if (type == typeof(string)) keys = example.Invoke(o => (string)o);
-                else if (type == typeof(Guid)) keys = example.Invoke(o => ((Guid)o).ToString());
-                else if (type == typeof(BitArray)) keys = example.Invoke(o => ((BitArray)o).ToString('0', '1'));
-                else if (type == typeof(PhysicalAddress)) keys = example.Invoke(o => ((PhysicalAddress)o).ToString());
-                else if (type == typeof(IPAddressCidr)) keys = example.Invoke(o => ((IPAddressCidr)o).ToString());
-                else if (type == typeof(IPAddress)) keys = example.Invoke(o => ((IPAddress)o).ToString());
+                if (type == typeof(bool)) keys = example.Each(o => ((bool)o).ToString());
+                else if (type == typeof(sbyte)) keys = example.Each(o => ((sbyte)o).ToString());
+                else if (type == typeof(byte)) keys = example.Each(o => ((byte)o).ToString());
+                else if (type == typeof(short)) keys = example.Each(o => ((short)o).ToString());
+                else if (type == typeof(ushort)) keys = example.Each(o => ((ushort)o).ToString());
+                else if (type == typeof(int)) keys = example.Each(o => ((int)o).ToString());
+                else if (type == typeof(uint)) keys = example.Each(o => ((uint)o).ToString());
+                else if (type == typeof(long)) keys = example.Each(o => ((long)o).ToString());
+                else if (type == typeof(ulong)) keys = example.Each(o => ((ulong)o).ToString());
+                else if (type == typeof(char)) keys = example.Each(o => ((char)o).ToString());
+                else if (type == typeof(float)) keys = example.Each(o => ((float)o).ToString());
+                else if (type == typeof(double)) keys = example.Each(o => ((double)o).ToString());
+                else if (type == typeof(decimal)) keys = example.Each(o => ((decimal)o).ToString());
+                else if (type == typeof(DateTime)) keys = example.Each(o => ((DateTime)o).ToString("o"));
+                else if (type == typeof(DateTimeOffset)) keys = example.Each(o => ((DateTimeOffset)o).ToString("o"));
+                else if (type == typeof(TimeSpan)) keys = example.Each(o => ((TimeSpan)o).ToISO8601());
+                else if (type == typeof(string)) keys = example.Each(o => (string)o);
+                else if (type == typeof(Guid)) keys = example.Each(o => ((Guid)o).ToString());
+                else if (type == typeof(BitArray)) keys = example.Each(o => ((BitArray)o).ToString('0', '1'));
+                else if (type == typeof(PhysicalAddress)) keys = example.Each(o => ((PhysicalAddress)o).ToString());
+                else if (type == typeof(IPAddressCidr)) keys = example.Each(o => ((IPAddressCidr)o).ToString());
+                else if (type == typeof(IPAddress)) keys = example.Each(o => ((IPAddress)o).ToString());
                 else keys = null;
             }
             catch
@@ -171,29 +171,29 @@ namespace Aveezo
 
             try
             {
-                if (type == typeof(bool)) values = example.Invoke(o => new OpenApiBoolean((bool)o));
-                else if (type == typeof(sbyte)) values = example.Invoke(o => new OpenApiInteger((sbyte)o));
-                else if (type == typeof(byte)) values = example.Invoke(o => new OpenApiInteger((byte)o));
-                else if (type == typeof(short)) values = example.Invoke(o => new OpenApiInteger((short)o));
-                else if (type == typeof(ushort)) values = example.Invoke(o => new OpenApiInteger((ushort)o));
-                else if (type == typeof(int)) values = example.Invoke(o => new OpenApiInteger((int)o));
-                else if (type == typeof(uint)) values = example.Invoke(o => new OpenApiLong((uint)o));
-                else if (type == typeof(long)) values = example.Invoke(o => new OpenApiLong((long)o));
-                else if (type == typeof(ulong)) values = example.Invoke(o => new OpenApiString(o.ToString()));
-                else if (type == typeof(char)) values = example.Invoke(o => new OpenApiString(o.ToString()));
-                else if (type == typeof(float)) values = example.Invoke(o => new OpenApiFloat((float)o));
-                else if (type == typeof(double)) values = example.Invoke(o => new OpenApiDouble((double)o));
-                else if (type == typeof(decimal)) values = example.Invoke(o => new OpenApiString(o.ToString()));
-                else if (type == typeof(DateTime)) values = example.Invoke(o => new OpenApiDateTime((DateTime)o));
-                else if (type == typeof(DateTimeOffset)) values = example.Invoke(o => new OpenApiDateTime((DateTimeOffset)o));
-                else if (type == typeof(TimeSpan)) values = example.Invoke(o => new OpenApiString(((TimeSpan)o).ToISO8601()));
-                else if (type == typeof(string)) values = example.Invoke(o => new OpenApiString((string)o));
-                else if (type == typeof(Guid)) values = example.Invoke(o => new OpenApiString(o.ToString()));
-                else if (type == typeof(BitArray)) values = example.Invoke(o => new OpenApiString(((BitArray)o).ToString('0', '1')));
-                else if (type == typeof(PhysicalAddress)) values = example.Invoke(o => new OpenApiString(((PhysicalAddress)o).ToString(":")));
-                else if (type == typeof(IPAddressCidr)) values = example.Invoke(o => new OpenApiString(o.ToString()));
-                else if (type == typeof(IPAddress)) values = example.Invoke(o => new OpenApiString(o.ToString()));
-                else values = example.Invoke(o => new OpenApiString(o.ToString()));
+                if (type == typeof(bool)) values = example.Each(o => new OpenApiBoolean((bool)o));
+                else if (type == typeof(sbyte)) values = example.Each(o => new OpenApiInteger((sbyte)o));
+                else if (type == typeof(byte)) values = example.Each(o => new OpenApiInteger((byte)o));
+                else if (type == typeof(short)) values = example.Each(o => new OpenApiInteger((short)o));
+                else if (type == typeof(ushort)) values = example.Each(o => new OpenApiInteger((ushort)o));
+                else if (type == typeof(int)) values = example.Each(o => new OpenApiInteger((int)o));
+                else if (type == typeof(uint)) values = example.Each(o => new OpenApiLong((uint)o));
+                else if (type == typeof(long)) values = example.Each(o => new OpenApiLong((long)o));
+                else if (type == typeof(ulong)) values = example.Each(o => new OpenApiString(o.ToString()));
+                else if (type == typeof(char)) values = example.Each(o => new OpenApiString(o.ToString()));
+                else if (type == typeof(float)) values = example.Each(o => new OpenApiFloat((float)o));
+                else if (type == typeof(double)) values = example.Each(o => new OpenApiDouble((double)o));
+                else if (type == typeof(decimal)) values = example.Each(o => new OpenApiString(o.ToString()));
+                else if (type == typeof(DateTime)) values = example.Each(o => new OpenApiDateTime((DateTime)o));
+                else if (type == typeof(DateTimeOffset)) values = example.Each(o => new OpenApiDateTime((DateTimeOffset)o));
+                else if (type == typeof(TimeSpan)) values = example.Each(o => new OpenApiString(((TimeSpan)o).ToISO8601()));
+                else if (type == typeof(string)) values = example.Each(o => new OpenApiString((string)o));
+                else if (type == typeof(Guid)) values = example.Each(o => new OpenApiString(o.ToString()));
+                else if (type == typeof(BitArray)) values = example.Each(o => new OpenApiString(((BitArray)o).ToString('0', '1')));
+                else if (type == typeof(PhysicalAddress)) values = example.Each(o => new OpenApiString(((PhysicalAddress)o).ToString(":")));
+                else if (type == typeof(IPAddressCidr)) values = example.Each(o => new OpenApiString(o.ToString()));
+                else if (type == typeof(IPAddress)) values = example.Each(o => new OpenApiString(o.ToString()));
+                else values = example.Each(o => new OpenApiString(o.ToString()));
             }
             catch
             {

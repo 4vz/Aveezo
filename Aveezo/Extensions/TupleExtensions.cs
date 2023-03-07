@@ -17,15 +17,15 @@ namespace Aveezo
         public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this List<(T1, T2, T3, T4, T5, T6, T7, T8, T9)> valueTupleList) => valueTupleList.ToArray().ToITuple();
         public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this List<(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)> valueTupleList) => valueTupleList.ToArray().ToITuple();
 
-        public static ITuple[] ToITuple<T1, T2>(this (T1, T2)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3>(this (T1, T2, T3)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4>(this (T1, T2, T3, T4)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4, T5>(this (T1, T2, T3, T4, T5)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6>(this (T1, T2, T3, T4, T5, T6)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7>(this (T1, T2, T3, T4, T5, T6, T7)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8>(this (T1, T2, T3, T4, T5, T6, T7, T8)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
-        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)[] valueTupleArray) => valueTupleArray.Invoke(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2>(this (T1, T2)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3>(this (T1, T2, T3)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4>(this (T1, T2, T3, T4)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5>(this (T1, T2, T3, T4, T5)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6>(this (T1, T2, T3, T4, T5, T6)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7>(this (T1, T2, T3, T4, T5, T6, T7)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8>(this (T1, T2, T3, T4, T5, T6, T7, T8)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
+        public static ITuple[] ToITuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)[] valueTupleArray) => valueTupleArray.Each(a => (ITuple)a);
 
         public static T[] ToArray<T>(this ITuple item)
         {

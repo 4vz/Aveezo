@@ -1,4 +1,4 @@
-﻿// https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/sql-server-data-type-mappings
+﻿// https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/Sql-server-data-type-mappings
 
 using Microsoft.Data.SqlClient;
 using System;
@@ -39,9 +39,7 @@ namespace Aveezo
 
         public override string FalseValue => "0";
 
-        public override string DefaultSchema => null;
-
-        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample({table.TableSample})" : "")}{table.Alias.Invoke(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" tablesample({table.TableSample})" : "")}{table.Alias.IfNotNull(s => $" {s}")}";
 
         public override string FormatSelectLimit(SqlTable table, SqlColumn[] columns, SqlJoin[] joins, SqlCondition where, SqlOrder order, int limit, SqlSelectOptions options)
         {
@@ -80,42 +78,17 @@ namespace Aveezo
             return s;
         }
 
-        public override string FormatInsertIntoValues(SqlTable table, string[] columns, bool output) => $"insert into {table.Ident}({columns.Join(", ")}){FormatOutput(output)} values";
+        public override string FormatInsertIntoValues(SqlTable table, string[] columns, bool output) => $"insert into {FormatTable(table)}({columns.Join(", ")}){FormatOutput(output)} values";
 
-        public override string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {table.Ident} set {set}{FormatOutput(output)}{FormatWhere(where)}";
+        public override string FormatUpdateSetWhere(SqlTable table, string set, string where, bool output) => $"update {FormatTable(table)} set {set}{FormatOutput(output)}{FormatWhere(where)}";
 
         public override string FormatUpdateTableWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
 
-        public override string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {table.Ident}{FormatOutput(output)}{FormatWhere(where)}";
+        public override string FormatDeleteFromWhere(SqlTable table, string where, bool output) => $"delete from {FormatTable(table)}{FormatOutput(output)}{FormatWhere(where)}";
 
-        public override string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {table.Ident}{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
+        public override string FormatDeleteTableFromWhere(SqlTable table, string whereColumn, object[] whereKeys, bool output) => $"delete from {FormatTable(table)}{FormatOutput(output)} where {whereColumn} in {FormatQuery(whereKeys)}";
 
         // Abstract 
-
-        public override bool GetPrimaryKeyColumn(SqlTable table, out string columnName)
-        {
-            columnName = null;
-
-            var result = new SqlQuery();
-
-            Query(@$"SELECT Col.Column_Name from 
-    INFORMATION_SCHEMA.TABLE_CONSTRAINTS Tab, 
-    INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE Col 
-WHERE 
-    Col.Constraint_Name = Tab.Constraint_Name
-    AND Col.Table_Name = Tab.Table_Name
-    AND Constraint_Type = 'PRIMARY KEY'
-    AND Col.Table_Name = '{table.Name}'", result, SqlExecuteType.Reader, out _, 10000);
-
-
-            if (result)
-            {
-                columnName = result[0][0]["Column_Name"].GetString();
-                return true;
-            }
-            else
-                return false;
-        }
 
         public override void Use(string database, object connection) => ((SqlConnection)connection).ChangeDatabase(database);
 
@@ -192,12 +165,7 @@ WHERE
                 return SqlExceptionType.Unspecified;
         }
 
-        public override void OnServiceCreated(SqlService service)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void OnServiceStarted(SqlService service, string[] registers)
+        public override void Service(SqlService service, string serviceSchema, SqlTable[] tables)
         {
             throw new NotImplementedException();
         }

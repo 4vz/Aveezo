@@ -36,37 +36,11 @@ namespace Aveezo
 
         public override string OrderByNull => "null";
 
-        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.Invoke(s => $" '{s}'")}";
+        public override string FormatSelectColumn(SqlColumn column) => $"{FormatColumn(column)}{column.Alias.IfNotNull(s => $" '{s}'")}";
 
-        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" sample({table.TableSample})" : "")}{table.Alias.Invoke(s => $" {s}")}";
+        public override string FormatFromAlias(SqlTable table) => $"{FormatFromStatementOrTable(table)}{(table.TableSample > 0 ? $" sample({table.TableSample})" : "")}{table.Alias.IfNotNull(s => $" {s}")}";
 
         // Abstract
-
-        public override bool GetPrimaryKeyColumn(SqlTable table, out string columnName)
-        {
-            columnName = null;
-
-            var result = new SqlQuery();
-
-            Query(@$"
-SELECT cols.column_name
-FROM all_constraints cons, all_cons_columns cols
-WHERE cols.table_name = '{table.Name.ToUpper()}'
-AND cons.constraint_type = 'P'
-AND cons.constraint_name = cols.constraint_name
-AND cons.owner = cols.owner
-ORDER BY cols.table_name, cols.position;
-", result, SqlExecuteType.Reader, out _, 10000);
-
-            if (result)
-            {
-                columnName = result[0][0]["column_name"].GetString();
-                return true;
-            }
-            else
-                return false;
-
-        }
 
         public override void Use(string database, object connection) => ((OracleConnection)connection).ChangeDatabase(database);
 
@@ -136,16 +110,10 @@ ORDER BY cols.table_name, cols.position;
             return SqlExceptionType.Unspecified;
         }
 
-        public override void OnServiceCreated(SqlService service)
+        public override void Service(SqlService service, string serviceSchema, SqlTable[] tables)
         {
             throw new NotImplementedException();
         }
-
-        public override void OnServiceStarted(SqlService service, string[] registers)
-        {
-            throw new NotImplementedException();
-        }
-
 
         #endregion
     }

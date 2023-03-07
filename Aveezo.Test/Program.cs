@@ -1,14 +1,4 @@
-﻿using System;
+﻿using Aveezo;
+using Aveezo.Test;
 
-using Aveezo;
-
-namespace Aveezo.Test
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-        }
-    }
-}
+App.Start(new TestApp());

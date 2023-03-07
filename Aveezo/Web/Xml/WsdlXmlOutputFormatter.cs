@@ -33,8 +33,8 @@ namespace Aveezo
             var soapxml = httpContext.Items["soapxml"] as string;
 
             var rest = context.HttpContext.Request.Path.ToString().ToLower();
-            var service = "";// $"http://{context.HttpContext.Request.Host}{Rest.SoapXmlPrefix}{rest}";
-            var serviceWsdl = ""; // $"http://{context.HttpContext.Request.Host}{Rest.SoapXmlPrefix}{Rest.WsdlXmlPrefix}{rest}";
+            var service = "";// $"http://{context.HttpContext.Shell.Host}{Rest.SoapXmlPrefix}{rest}";
+            var serviceWsdl = ""; // $"http://{context.HttpContext.Shell.Host}{Rest.SoapXmlPrefix}{Rest.WsdlXmlPrefix}{rest}";
             var data = context.Object;
 
             string interfaceName = "interface";

@@ -99,7 +99,7 @@ internal class AuthService : ApiService, IAuthService
             //}
             //else
             //{
-            //    var id = sql.Select("ident", "id_id", "id_password", "id_salt");
+            //    var id = Sql.Select("ident", "id_id", "id_password", "id_salt");
             //    id.Where = (SqlColumn)"id_name" == username;
 
             //    var r = id.Execute();
@@ -259,7 +259,7 @@ internal class AuthService : ApiService, IAuthService
 
         if (qsc.Execute(out SqlResult qscr))
         {
-            var scopes = qscr.ToList<string, int>("sc_name", "cs_level").ToArray().Invoke(o => $"{o.Item1}:{o.Item2}").Join();
+            var scopes = qscr.ToList<string, int>("sc_name", "cs_level").ToArray().Each(o => $"{o.Item1}:{o.Item2}").Join();
 
             string hiddenParameters = null;
 

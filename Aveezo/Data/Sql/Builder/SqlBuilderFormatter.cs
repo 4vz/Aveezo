@@ -39,7 +39,7 @@ public class SqlBuilderFormatter
     #region Statics
 
     /// <summary>
-    /// Function builder for formatter parameter in select builder using query value pair.
+    /// Function hostBuilder for formatter parameter in select hostBuilder using query value pair.
     /// </summary>
     public static Func<SqlBuilderFormatter, object> Pair<T>(object defaultValue, params (T, object)[] values)
     {

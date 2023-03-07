@@ -52,12 +52,12 @@ public sealed class SqlBuilderQuery
     #region Statics
 
     /// <summary>
-    /// Function builder for query parameter in select builder using query value pair, with default options: StringConvertOptions.ToLower.
+    /// Function hostBuilder for query parameter in select hostBuilder using query value pair, with default options: StringConvertOptions.ToLower.
     /// </summary>
     public static Func<SqlBuilderQuery, SqlCondition> Pair<T>(params (Values<string>, T)[] values) => Pair(StringConvertOptions.ToLower, values);
 
     /// <summary>
-    /// Function builder for query parameter in select builder.
+    /// Function hostBuilder for query parameter in select hostBuilder.
     /// </summary>
     public static Func<SqlBuilderQuery, SqlCondition> Pair<T>(StringConvertOptions queryConvertOptions, params (Values<string>, T)[] values)
     {
@@ -96,7 +96,7 @@ public sealed class SqlBuilderQuery
     }
 
     /// <summary>
-    /// Function builder for query parameter in select builder using equality with specified string format, {0} as query input.
+    /// Function hostBuilder for query parameter in select hostBuilder using equality with specified string format, {0} as query input.
     /// </summary>
     public static Func<SqlBuilderQuery, SqlCondition> Format(string format)
     {

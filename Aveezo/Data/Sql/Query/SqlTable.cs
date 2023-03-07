@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,14 +12,12 @@ namespace Aveezo
 
         public bool IsStatement { get; private set; }
 
-        public string Schema { get; } = null;
+        public string Schema { get; internal set; } = null;
 
         /// <summary>
         /// If IsStatement is false, gets the name of the table. Otherwise gets the inner statement.
         /// </summary>
         public string Name { get; private set; }
-
-        public string Ident => $"{Schema.Invoke(schema => $"{schema}.")}{Name}";
 
         public float TableSample { get; set; } = 0;
 
@@ -59,8 +57,8 @@ namespace Aveezo
 
                 if (name.Length > 2 && dot > -1)
                 {
-                    Schema = name.Substring(0, dot);
-                    Name = name.Substring(dot + 1);
+                    Schema = name[..dot].NullIfEmpty();
+                    Name = name[(dot + 1)..];
                 }
                 else
                     Name = name;
@@ -86,7 +84,7 @@ namespace Aveezo
         /// <summary>
         /// Gets new table based on this table with specified statement;
         /// </summary>
-        public SqlTable GetStatement(string statement)
+        public SqlTable CreateStatement(string statement)
         {
             var table = new SqlTable(); // create new statement table
 
@@ -97,6 +95,11 @@ namespace Aveezo
             table.Alias = Alias;
 
             return table;
+        }
+
+        public override string ToString()
+        {
+            return IsStatement ? "<statement>" : $"{Schema.IfNotNull(s => $"{s}.")}{Name}";
         }
 
         #endregion
